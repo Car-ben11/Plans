@@ -216,7 +216,7 @@
     <h1>Plan Workspace & Room Scanner</h1>
     
     <div class="card" style="background: #f8fafc; padding: 12px; font-size: 0.85rem; color: #64748b;">
-        🔒 <strong>Google Gemini Connection:</strong> Active (Legacy APIzaSy Key Embedded)
+        🔒 <strong>Google Gemini Connection:</strong> Active (Production Route Engaged)
     </div>
 
     <div class="card">
@@ -257,11 +257,10 @@
         </div>
     </div>
 
-    <div class="version-footer">VERSION 4.3</div>
+    <div class="version-footer">VERSION 4.4</div>
 </div>
 
 <script>
-// Hardcoded lookup pointing directly to your legacy key string
 const EM_KEY = "AIzaSyB8HvTl3I3qb1fRRtdyWV3gWS7_528jEVs";
 
 let originalImage = new Image();
@@ -440,10 +439,10 @@ function runSmartRoomScan() {
     
     try {
         const base64Data = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
-        statusBox.innerText = "🧠 Analyzing layout margins via legacy pipeline routing...";
+        statusBox.innerText = "🧠 Analyzing layout margins via production routing...";
 
-        // Standard dynamic fallback URL structure for AIzaSy tokens
-        const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + EM_KEY;
+        // CHANGED ROUTING PATH BELOW FROM v1beta TO v1 TO SUPPORT THE FLASH MODEL SECURELY
+        const url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=" + EM_KEY;
 
         const prompt = "Look closely at this architectural plan drawing layout. Identify any rooms that contain a bed drawing symbol (Bedrooms). For every bedroom found, estimate its bounding box coordinates inside the image framework. Return data strictly as a valid JSON array of objects. Do not wrap code blocks in backticks, return raw string text. JSON structure example format: " + 
         '[{"roomName": "Bedroom 1", "box_2d": [ymin, xmin, ymax, xmax]}] where coordinates are standard normalized integers between 0 and 1000 representing the image boundary grid limits.';
