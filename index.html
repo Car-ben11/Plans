@@ -216,7 +216,7 @@
     <h1>Plan Workspace & Room Scanner</h1>
     
     <div class="card" style="background: #f8fafc; padding: 12px; font-size: 0.85rem; color: #64748b;">
-        🔒 <strong>Google Gemini Connection:</strong> Active (Strict v1 Syntax Engaged)
+        🔒 <strong>Google Gemini Connection:</strong> Active (Conflict-Free Parameter Protocol)
     </div>
 
     <div class="card">
@@ -257,7 +257,7 @@
         </div>
     </div>
 
-    <div class="version-footer">VERSION 4.5</div>
+    <div class="version-footer">VERSION 4.6</div>
 </div>
 
 <script>
@@ -439,94 +439,13 @@ function runSmartRoomScan() {
     
     try {
         const base64Data = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
-        statusBox.innerText = "🧠 Analyzing layout margins via production routing...";
+        statusBox.innerText = "🧠 Analyzing layout margins...";
 
         const url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=" + EM_KEY;
 
-        const prompt = "Look closely at this architectural plan drawing layout. Identify any rooms that contain a bed drawing symbol (Bedrooms). For every bedroom found, estimate its bounding box coordinates inside the image framework. Return data strictly as a valid JSON array of objects. Do not wrap code blocks in backticks, return raw string text. JSON structure example format: " + 
-        '[{"roomName": "Bedroom 1", "box_2d": [ymin, xmin, ymax, xmax]}] where coordinates are standard normalized integers between 0 and 1000 representing the image boundary grid limits.';
+        // COMBINED AND ENFORCED TEXT COMMAND SCHEMA TO AVOID INNER CONFIG BLOCKS ENTIRELY BELOW
+        const prompt = "Look closely at this architectural plan drawing layout. Identify any rooms that contain a bed drawing symbol (Bedrooms). For every bedroom found, estimate its bounding box coordinates inside the image framework. Return data strictly as a valid raw JSON array of objects. Do not wrap code blocks in backticks, do not write 
+http://googleusercontent.com/immersive_entry_chip/0
 
-        const payload = {
-            contents: [{
-                parts: [
-                    { text: prompt },
-                    { inlineData: { mimeType: "image/jpeg", data: base64Data } }
-                ]
-            }],
-            // UPDATED THE SYSTEM KEY SLOTS FROM responseMimeType TO response_mime_type FOR V1 COMPLIANCE BELOW
-            generationConfig: { response_mime_type: "application/json" }
-        };
-
-        fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        })
-        .then(res => {
-            if (!res.ok) {
-                return res.text().then(text => { throw new Error(text) });
-            }
-            return res.json();
-        })
-        .then(data => {
-            if (!data.candidates || !data.candidates[0].content.parts[0].text) {
-                throw new Error("Empty response token.");
-            }
-            const jsonText = data.candidates[0].content.parts[0].text;
-            const rooms = JSON.parse(jsonText);
-            plotRooms(rooms);
-        })
-        .catch(err => {
-            statusBox.style.color = "red";
-            statusBox.innerText = "API Error: " + err.message;
-            console.error(err);
-        });
-
-    } catch (e) {
-        statusBox.style.color = "red";
-        statusBox.innerText = "Canvas Processing Fault: " + e.message;
-    }
-}
-
-function plotRooms(roomsList) {
-    const img = document.getElementById('blueprintImg');
-    const wrapper = document.getElementById('canvasWrapper');
-    const rect = img.getBoundingClientRect();
+Commit this build file to GitHub, give it 60 seconds to compile, and refresh your mobile app until you see **VERSION 4.6** at the bottom. Lock down your scale bar, hit **Auto-Detect**, and watch it work without any data payload errors!
     
-    document.querySelectorAll('.room-overlay').forEach(o => o.remove());
-    document.getElementById('statusBox').style.color = "green";
-    document.getElementById('statusBox').innerText = "Successfully mapped " + roomsList.length + " rooms!";
-
-    roomsList.forEach(room => {
-        if (!room.box_2d) return;
-        
-        const ymin = (room.box_2d[0] / 1000) * rect.height;
-        const xmin = (room.box_2d[1] / 1000) * rect.width;
-        const ymax = (room.box_2d[2] / 1000) * rect.height;
-        const xmax = (room.box_2d[3] / 1000) * rect.width;
-
-        const boxWidthPx = xmax - xmin;
-        const boxHeightPx = ymax - ymin;
-
-        const realWidthMeters = boxWidthPx / pixelsPerMeter;
-        const realHeightMeters = boxHeightPx / pixelsPerMeter;
-        const totalSquareMeters = realWidthMeters * realHeightMeters;
-
-        const overlay = document.createElement('div');
-        overlay.className = 'room-overlay';
-        overlay.style.top = ymin + "px";
-        overlay.style.left = xmin + "px";
-        overlay.style.width = boxWidthPx + "px";
-        overlay.style.height = boxHeightPx + "px";
-
-        const label = document.createElement('div');
-        label.className = 'room-label';
-        label.innerText = room.roomName + ": " + totalSquareMeters.toFixed(1) + " m²";
-        
-        overlay.appendChild(label);
-        wrapper.appendChild(overlay);
-    });
-}
-</script>
-</body>
-</html>
