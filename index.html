@@ -124,49 +124,54 @@
             white-space: nowrap;
         }
 
+        /* NEW ULTRA-TINY DRAGGABLE MICROSCOPIC PRECISION SIGHT TARGET */
         .marker {
             position: absolute;
-            width: 24px;
-            height: 24px;
-            background: rgba(239, 68, 68, 0.4);
-            border: 1px dashed rgba(239, 68, 68, 0.7);
+            width: 14px; /* Significantly reduced size footprint */
+            height: 14px;
+            background: rgba(239, 68, 68, 0.25); /* Faint tint translucent window layout */
+            border: 1px solid rgba(239, 68, 68, 0.6);
             border-radius: 50%;
             transform: translate(-50%, -50%);
-            pointer-events: none;
-            z-index: 10;
+            z-index: 100;
+            cursor: move; /* Indicates drag capability directly to user visual loops */
+            touch-action: none; /* Required parameter to lock browser scrolling on mobile touch drags */
         }
 
+        /* Core ultra-thin hairline horizontal crossing line */
         .marker::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 50%;
-            width: 1px;
-            height: 100%;
-            background: rgba(239, 68, 68, 0.9);
-            transform: translateX(-50%);
+            top: 50%;
+            left: -5px;
+            width: 24px; /* Extends slightly past boundaries to align elements crisply */
+            height: 1px;
+            background: #ef4444;
+            transform: translateY(-50%);
         }
 
+        /* Core ultra-thin hairline vertical crossing line */
         .marker::after {
             content: '';
             position: absolute;
-            top: 50%;
-            left: 0;
-            width: 100%;
-            height: 1px;
-            background: rgba(239, 68, 68, 0.9);
-            transform: translateY(-50%);
+            top: -5px;
+            left: 50%;
+            width: 1px;
+            height: 24px;
+            background: #ef4444;
+            transform: translateX(-50%);
         }
 
         .marker-center-dot {
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 3px;
-            height: 3px;
-            background: #ef4444;
+            width: 2px;
+            height: 2px;
+            background: #b91c1c;
             border-radius: 50%;
             transform: translate(-50%, -50%);
+            z-index: 105;
         }
 
         .btn-group {
@@ -251,19 +256,18 @@
     </div>
 
     <div class="card" id="canvasCard" style="display: none;">
-        <label>🗺️ Blueprint Workspace Canvas</label>
+        <label>🗺️ Blueprint Workspace Canvas (Tip: Drag pins to readjust)</label>
         <div class="canvas-container" id="canvasWrapper">
             <img id="blueprintImg" src="" alt="" onclick="handleCanvasClick(event)">
         </div>
     </div>
 
-    <div class="version-footer">VERSION 2.7</div>
+    <div class="version-footer">VERSION 2.8</div>
 </div>
 
 <script>
 const EM_KEY = "AQ.Ab8RN6LFUEMClQl0jMMUU-2pHx9GyojB8HQWG-WmbMiWxDp3Cg";
 
-// Completely disable external thread workers to avoid mobile browser sandbox freezing
 if (window['pdfjs-dist/build/pdf']) {
     const pdfjsLib = window['pdfjs-dist/build/pdf'];
     pdfjsLib.GlobalWorkerOptions.workerSrc = '';
@@ -314,7 +318,7 @@ function loadBlueprint(event) {
                         imgElement.src = base64CanvasImage;
                         canvasCard.style.display = 'block';
                         originalImage.src = base64CanvasImage;
-                        statusBox.innerText = "PDF blueprint converted successfully. Choose calibration method above.";
+                        statusBox.innerText = "PDF blueprint converted successfully. Choose calibration method.";
                     });
                 });
             }).catch(err => {
@@ -330,7 +334,7 @@ function loadBlueprint(event) {
             imgElement.src = e.target.result;
             canvasCard.style.display = 'block';
             originalImage.src = e.target.result;
-            statusBox.innerText = "Image loaded successfully. Choose calibration method above.";
+            statusBox.innerText = "Image loaded successfully. Choose calibration method.";
         };
         reader.readAsDataURL(file);
     }
@@ -339,6 +343,7 @@ function loadBlueprint(event) {
 function clearOverlays() {
     document.querySelectorAll('.marker').forEach(m => m.remove());
     document.querySelectorAll('.room-overlay').forEach(o => o.remove());
+    calPoints = [];
 }
 
 function setCalibrationMode(mode) {
@@ -363,7 +368,6 @@ function setCalibrationMode(mode) {
 function startClickSequence() {
     if (!calibrationMode) return alert("Select calibration mode first!");
     isCalibrating = true;
-    calPoints = [];
     clearOverlays();
     document.getElementById('statusBox').innerText = "📐 Calibration Active: Tap point 1 on the plan canvas, then tap point 2.";
 }
@@ -378,33 +382,80 @@ function handleCanvasClick(e) {
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
 
+    const pointIndex = calPoints.length; // Save current index designation path (0 or 1)
+    calPoints.push({x: clickX, y: clickY});
+
+    createDraggableMarker(clickX, clickY, pointIndex, wrapper, img);
+
+    if (calPoints.length === 2) {
+        isCalibrating = false;
+        recalculateScaleRatio();
+    }
+}
+
+// INJECTS DRAG CAPABILITIES FOR BOTH COMPUTER MOUSE AND MOBILE TOUCH EVENT GESTURES
+function createDraggableMarker(x, y, index, wrapper, imgElement) {
     const marker = document.createElement('div');
     marker.className = 'marker';
-    marker.style.left = clickX + "px";
-    marker.style.top = clickY + "px";
+    marker.style.left = x + "px";
+    marker.style.top = y + "px";
     
     const centerDot = document.createElement('div');
     centerDot.className = 'marker-center-dot';
     marker.appendChild(centerDot);
     
     wrapper.appendChild(marker);
-    
-    calPoints.push({x: clickX, y: clickY});
 
-    if (calPoints.length === 2) {
-        isCalibrating = false;
-        const dx = calPoints[1].x - calPoints[0].x;
-        const dy = calPoints[1].y - calPoints[0].y;
-        const pixelDistance = Math.sqrt(dx*dx + dy*dy);
+    // Event listener mappings for handling pointer movements seamlessly
+    marker.addEventListener('pointerdown', function(e) {
+        e.preventDefault();
+        marker.setPointerCapture(e.pointerId);
         
-        let userLength = parseFloat(document.getElementById('scaleInput').value) || 1;
-        if (document.getElementById('unitInput').value === 'mm') {
-            userLength = userLength / 1000;
+        function onPointerMove(ev) {
+            const rect = imgElement.getBoundingClientRect();
+            let newX = ev.clientX - rect.left;
+            let newY = ev.clientY - rect.top;
+
+            // Clamp positions to stay within visible canvas areas
+            newX = Math.max(0, Math.min(newX, rect.width));
+            newY = Math.max(0, Math.min(newY, rect.height));
+
+            marker.style.left = newX + "px";
+            marker.style.top = newY + "px";
+
+            // Live-update underlying mathematical lookup tables
+            calPoints[index] = {x: newX, y: newY};
+            
+            if (calPoints.length === 2 && !isCalibrating) {
+                recalculateScaleRatio();
+            }
         }
-        
-        pixelsPerMeter = pixelDistance / userLength;
-        document.getElementById('statusBox').innerText = "✨ Scale Locked! Ready for AI Auto-Detection.";
+
+        function onPointerUp(ev) {
+            marker.releasePointerCapture(ev.pointerId);
+            marker.removeEventListener('pointermove', onPointerMove);
+            marker.removeEventListener('pointerup', onPointerUp);
+        }
+
+        marker.addEventListener('pointermove', onPointerMove);
+        marker.addEventListener('pointerup', onPointerUp);
+    });
+}
+
+function recalculateScaleRatio() {
+    if (calPoints.length < 2) return;
+    
+    const dx = calPoints[1].x - calPoints[0].x;
+    const dy = calPoints[1].y - calPoints[0].y;
+    const pixelDistance = Math.sqrt(dx*dx + dy*dy);
+    
+    let userLength = parseFloat(document.getElementById('scaleInput').value) || 1;
+    if (document.getElementById('unitInput').value === 'mm') {
+        userLength = userLength / 1000;
     }
+    
+    pixelsPerMeter = pixelDistance / userLength;
+    document.getElementById('statusBox').innerText = "✨ Scale Locked & Verified! (Feel free to drag markers to tweak scale).";
 }
 
 function runSmartRoomScan() {
