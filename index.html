@@ -9,8 +9,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-
     <style>
         :root {
             --primary: #2563eb;
@@ -223,10 +221,10 @@
     <div class="card">
         <label>File Importer</label>
         <div class="upload-dropzone" onclick="document.getElementById('planImporter').click()">
-            <span id="uploadPromptText">📤 Tap to Upload Plan (PDF or Image)</span>
-            <input type="file" id="planImporter" accept="image/*,application/pdf" onchange="loadBlueprint(event)">
+            <span id="uploadPromptText">📤 Tap to Upload Plan Image (PNG or JPG)</span>
+            <input type="file" id="planImporter" accept="image/*" onchange="loadBlueprint(event)">
         </div>
-        <div id="statusBox" class="status-msg">Please upload an image plan or PDF blueprint file to begin.</div>
+        <div id="statusBox" class="status-msg">Please upload a PNG or JPG snapshot of your plan layout to begin.</div>
     </div>
 
     <div class="card">
@@ -259,16 +257,11 @@
         </div>
     </div>
 
-    <div class="version-footer">VERSION 2.9</div>
+    <div class="version-footer">VERSION 3.0</div>
 </div>
 
 <script>
 const EM_KEY = "AQ.Ab8RN6LFUEMClQl0jMMUU-2pHx9GyojB8HQWG-WmbMiWxDp3Cg";
-
-if (window['pdfjs-dist/build/pdf']) {
-    const pdfjsLib = window['pdfjs-dist/build/pdf'];
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-}
 
 let originalImage = new Image();
 let calibrationMode = null; 
@@ -286,55 +279,19 @@ function loadBlueprint(event) {
     const promptText = document.getElementById('uploadPromptText');
     
     statusBox.style.color = "var(--primary)";
-    statusBox.innerText = "Loading and rasterizing plan layout asset...";
+    statusBox.innerText = "Loading plan graphic layers...";
     promptText.innerText = "📄 " + file.name;
     clearOverlays();
     pixelsPerMeter = null;
 
-    if (file.type === "application/pdf") {
-        const fileReader = new FileReader();
-        fileReader.onload = function () {
-            const typedarray = new Uint8Array(this.result);
-            const loadingTask = pdfjsLib.getDocument({data: typedarray});
-            
-            loadingTask.promise.then(function (pdf) {
-                pdf.getPage(1).then(function (page) {
-                    const viewport = page.getViewport({ scale: 1.5 });
-                    const canvas = document.createElement('canvas');
-                    const context = canvas.getContext('2d');
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
-
-                    const renderContext = {
-                        canvasContext: context,
-                        viewport: viewport
-                    };
-                    
-                    page.render(renderContext).promise.then(function () {
-                        const base64CanvasImage = canvas.toDataURL('image/jpeg', 0.8);
-                        imgElement.src = base64CanvasImage;
-                        canvasCard.style.display = 'block';
-                        originalImage.src = base64CanvasImage;
-                        statusBox.innerText = "PDF blueprint converted successfully. Choose calibration method.";
-                    });
-                });
-            }).catch(err => {
-                statusBox.style.color = "red";
-                statusBox.innerText = "Error decoding PDF. Try uploading a picture file instead.";
-                console.error(err);
-            });
-        };
-        fileReader.readAsArrayBuffer(file);
-    } else {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            imgElement.src = e.target.result;
-            canvasCard.style.display = 'block';
-            originalImage.src = e.target.result;
-            statusBox.innerText = "Image loaded successfully. Choose calibration method.";
-        };
-        reader.readAsDataURL(file);
-    }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        imgElement.src = e.target.result;
+        canvasCard.style.display = 'block';
+        originalImage.src = e.target.result;
+        statusBox.innerText = "Image loaded successfully. Choose your preferred scaling calibration method above.";
+    };
+    reader.readAsDataURL(file);
 }
 
 function clearOverlays() {
@@ -457,8 +414,7 @@ function runSmartRoomScan() {
     document.getElementById('statusBox').style.color = "var(--primary)";
     document.getElementById('statusBox').innerText = "🧠 Compressing and preparing file payload structure...";
 
-    // --- NEW SMART COMPRESSION LAYER ---
-    const maxDimension = 1024; // Standard optimized AI vision size limits
+    const maxDimension = 1024; 
     let width = originalImage.width;
     let height = originalImage.height;
 
@@ -478,10 +434,81 @@ function runSmartRoomScan() {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(originalImage, 0, 0, width, height);
     
-    // Outputs a lightweight 80% quality compressed JPEG text string
     const base64Data = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
 
     document.getElementById('statusBox').innerText = "🧠 AI processing plan structural configurations...";
 
-    const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?
+    const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + EM_KEY;
+
+    const prompt = "Look closely at this architectural plan drawing layout. Identify any rooms that contain a bed drawing symbol (Bedrooms). For every bedroom found, estimate its bounding box coordinates inside the image framework. Return data strictly as a valid JSON array of objects. Do not wrap code blocks in backticks, return raw string text. JSON structure example format: " + 
+    '[{"roomName": "Bedroom 1", "box_2d": [ymin, xmin, ymax, xmax]}] where coordinates are standard normalized integers between 0 and 1000 representing the image boundary grid limits.';
+
+    fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            contents: [{
+                parts: [
+                    { text: prompt },
+                    { inlineData: { mimeType: "image/jpeg", data: base64Data } }
+                ]
+            }],
+            generationConfig: { responseMimeType: "application/json" }
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (!data.candidates || !data.candidates[0].content.parts[0].text) {
+            throw new Error("API Limit or verification fault.");
+        }
+        const jsonText = data.candidates[0].content.parts[0].text;
+        const rooms = JSON.parse(jsonText);
+        plotRooms(rooms);
+    })
+    .catch(err => {
+        document.getElementById('statusBox').style.color = "red";
+        document.getElementById('statusBox').innerText = "AI Connection issue. Check your plan file limits or token availability.";
+        console.error(err);
+    });
+}
+
+function plotRooms(roomsList) {
+    const img = document.getElementById('blueprintImg');
+    const wrapper = document.getElementById('canvasWrapper');
+    const rect = img.getBoundingClientRect();
     
+    document.querySelectorAll('.room-overlay').forEach(o => o.remove());
+    document.getElementById('statusBox').style.color = "green";
+    document.getElementById('statusBox').innerText = "Successfully mapped " + roomsList.length + " rooms!";
+
+    roomsList.forEach(room => {
+        const ymin = (room.box_2d[0] / 1000) * rect.height;
+        const xmin = (room.box_2d[1] / 1000) * rect.width;
+        const ymax = (room.box_2d[2] / 1000) * rect.height;
+        const xmax = (room.box_2d[3] / 1000) * rect.width;
+
+        const boxWidthPx = xmax - xmin;
+        const boxHeightPx = ymax - ymin;
+
+        const realWidthMeters = boxWidthPx / pixelsPerMeter;
+        const realHeightMeters = boxHeightPx / pixelsPerMeter;
+        const totalSquareMeters = realWidthMeters * realHeightMeters;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'room-overlay';
+        overlay.style.top = ymin + "px";
+        overlay.style.left = xmin + "px";
+        overlay.style.width = boxWidthPx + "px";
+        overlay.style.height = boxHeightPx + "px";
+
+        const label = document.createElement('div');
+        label.className = 'room-label';
+        label.innerText = room.roomName + ": " + totalSquareMeters.toFixed(1) + " m²";
+        
+        overlay.appendChild(label);
+        wrapper.appendChild(overlay);
+    });
+}
+</script>
+</body>
+</html>
