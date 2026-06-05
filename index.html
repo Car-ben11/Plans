@@ -216,7 +216,7 @@
     <h1>Plan Workspace & Room Scanner</h1>
     
     <div class="card" style="background: #f8fafc; padding: 12px; font-size: 0.85rem; color: #64748b;">
-        🔒 <strong>Gemini API Connection:</strong> Active
+        🔒 <strong>Gemini API Connection:</strong> Active (Updated for AQ Keys)
     </div>
 
     <div class="card">
@@ -258,11 +258,12 @@
         </div>
     </div>
 
-    <div class="version-footer">VERSION 3.3</div>
+    <div class="version-footer">VERSION 3.4</div>
 </div>
 
 <script>
-const EM_KEY = "AQ.Ab8RN6LFUEMClQl0jMMUU-2pHx9GyojB8HQWG-WmbMiWxDp3Cg";
+// Locked configuration pointing directly to your updated verification credentials
+const EM_KEY = "AQ.Ab8RN6J9RNhQq7v3a9SA87VGZGr7fjn73zyJc7Lx4UgM94IQCQ";
 
 let originalImage = new Image();
 let calibrationMode = null; 
@@ -310,7 +311,7 @@ function setCalibrationMode(mode) {
     if (mode === 'scaleBar') {
         document.getElementById('scaleBarBtn').classList.add('active-mode');
         document.getElementById('inputLabel').innerText = "Enter full length of Scale Bar:";
-        document.getElementById('scaleInput').value = "10";
+        document.getElementById('scaleInput').value = "5";
         document.getElementById('unitInput').value = "meters";
     } else {
         document.getElementById('knownLineBtn').classList.add('active-mode');
@@ -414,7 +415,7 @@ function runSmartRoomScan() {
 
     const statusBox = document.getElementById('statusBox');
     statusBox.style.color = "var(--primary)";
-    statusBox.innerText = "🧠 Formatting image layers for Google Cloud transfer...";
+    statusBox.innerText = "🧠 Formatting image structural layout data layers...";
 
     const maxDimension = 1024; 
     let width = originalImage.width;
@@ -436,12 +437,12 @@ function runSmartRoomScan() {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(originalImage, 0, 0, width, height);
     
-    // SAFE RE-ROUTING TRANSITION LAYER
     try {
         const base64Data = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
-        statusBox.innerText = "🧠 Connecting directly to Gemini 1.5 Flash Vision engine...";
+        statusBox.innerText = "🧠 Initializing handshake with updated Google API v1 core channel...";
 
-        const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + EM_KEY;
+        // CHANGED ENDPOINT URL STRUCTURE BELOW TO EXPLICITLY PERMIT NEW AQ KEY PROCESSING
+        const url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=" + EM_KEY;
 
         const prompt = "Look closely at this architectural plan drawing layout. Identify any rooms that contain a bed drawing symbol (Bedrooms). For every bedroom found, estimate its bounding box coordinates inside the image framework. Return data strictly as a valid JSON array of objects. Do not wrap code blocks in backticks, return raw string text. JSON structure example format: " + 
         '[{"roomName": "Bedroom 1", "box_2d": [ymin, xmin, ymax, xmax]}] where coordinates are standard normalized integers between 0 and 1000 representing the image boundary grid limits.';
@@ -469,7 +470,7 @@ function runSmartRoomScan() {
         })
         .then(data => {
             if (!data.candidates || !data.candidates[0].content.parts[0].text) {
-                throw new Error("Empty response received from the Google server matrix.");
+                throw new Error("Empty response token.");
             }
             const jsonText = data.candidates[0].content.parts[0].text;
             const rooms = JSON.parse(jsonText);
@@ -477,13 +478,13 @@ function runSmartRoomScan() {
         })
         .catch(err => {
             statusBox.style.color = "red";
-            statusBox.innerText = "Google API Rejected Request: " + err.message;
+            statusBox.innerText = "API Error: " + err.message;
             console.error(err);
         });
 
     } catch (e) {
         statusBox.style.color = "red";
-        statusBox.innerText = "Local Canvas Security Error: " + e.message;
+        statusBox.innerText = "Local Rendering Error: " + e.message;
     }
 }
 
