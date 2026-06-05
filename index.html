@@ -28,6 +28,7 @@
         body {
             background-color: var(--bg);
             color: var(--text);
+            user-select: none;
         }
 
         .upload-dropzone {
@@ -77,11 +78,12 @@
             align-items: flex-start;
             justify-content: flex-start;
             padding: 2px;
+            touch-action: none;
         }
 
         .room-overlay.selected-active {
-            border: 2.5px solid var(--cad-active);
-            background: rgba(6, 182, 212, 0.15);
+            border: 2.5px solid var(--cad-active) !important;
+            background: rgba(6, 182, 212, 0.15) !important;
             z-index: 95;
         }
 
@@ -100,36 +102,37 @@
             border: 1px solid white;
         }
 
+        /* Large, Mobile-Friendly Touch Handles */
         .cad-handle {
             position: absolute;
-            width: 14px;
-            height: 14px;
+            width: 24px;
+            height: 24px;
             background: #ffffff;
-            border: 2.5px solid var(--cad-active);
+            border: 3px solid var(--cad-active);
             border-radius: 50%;
             z-index: 100;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
             cursor: pointer;
             touch-action: none;
         }
 
-        .cad-handle.tl { top: -7px; left: -7px; cursor: nwse-resize; }
-        .cad-handle.tr { top: -7px; right: -7px; cursor: nesw-resize; }
-        .cad-handle.bl { bottom: -7px; left: -7px; cursor: nesw-resize; }
-        .cad-handle.br { bottom: -7px; right: -7px; cursor: nwse-resize; }
+        .cad-handle.tl { top: -12px; left: -12px; }
+        .cad-handle.tr { top: -12px; right: -12px; }
+        .cad-handle.bl { bottom: -12px; left: -12px; }
+        .cad-handle.br { bottom: -12px; right: -12px; }
 
         .marker {
             position: absolute;
-            width: 20px;
-            height: 20px;
+            width: 24px;
+            height: 24px;
             background: rgba(217, 70, 239, 0.3);
-            border: 2px solid var(--marker-glow);
+            border: 2.5px solid var(--marker-glow);
             border-radius: 50%;
             transform: translate(-50%, -50%);
             z-index: 110;
             cursor: move;
             touch-action: none;
-            box-shadow: 0 0 8px var(--marker-glow);
+            box-shadow: 0 0 10px var(--marker-glow);
         }
 
         .marker::before {
@@ -137,7 +140,7 @@
             position: absolute;
             top: 50%;
             left: -6px;
-            width: 32px;
+            width: 36px;
             height: 1px;
             background: var(--marker-glow);
         }
@@ -148,7 +151,7 @@
             top: -6px;
             left: 50%;
             width: 1px;
-            height: 32px;
+            height: 36px;
             background: var(--marker-glow);
         }
 
@@ -286,6 +289,7 @@
                 <svg id="calibrationLineSvg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100;">
                     <line id="calibrationLine" x1="0" y1="0" x2="0" y2="0" stroke="var(--marker-glow)" stroke-width="2.5" stroke-dasharray="6 4" />
                 </svg>
+                <div id="liveDrawBox" class="absolute border-2 border-dashed border-cyan-500 bg-cyan-500/10 pointer-events-none hidden z-50"></div>
                 <img id="blueprintImg" src="" alt="" onclick="handleCanvasClick(event)">
                 <div id="cadHandleLayer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 99;"></div>
             </div>
@@ -330,7 +334,7 @@
         </div>
     </div>
 
-    <div class="version-footer">VERSION 6.1 (TAP-TAP MANUAL DRAW SUITE)</div>
+    <div class="version-footer">VERSION 6.2 (LIVE PREVIEW DRAW + PERSISTENT HANDLES)</div>
 </div>
 
 <script>
@@ -376,6 +380,22 @@ document.getElementById('scanTypeSelect').onchange = function() {
 
 window.onload = function() {
     document.getElementById('userApiKeyInput').value = getActiveApiKey();
+    
+    // Bind mousemove/pointermove listeners natively to the canvas container to capture drawing preview paths live
+    const container = document.getElementById('canvasWrapper');
+    container.addEventListener('pointermove', function(e) {
+        if (!isDrawingRoom || !startDrawPoint) return;
+        const rect = document.getElementById('blueprintImg').getBoundingClientRect();
+        const currentX = e.clientX - rect.left;
+        const currentY = e.clientY - rect.top;
+        
+        const previewBox = document.getElementById('liveDrawBox');
+        previewBox.style.left = Math.min(startDrawPoint.x, currentX) + "px";
+        previewBox.style.top = Math.min(startDrawPoint.y, currentY) + "px";
+        previewBox.style.width = Math.abs(currentX - startDrawPoint.x) + "px";
+        previewBox.style.height = Math.abs(currentY - startDrawPoint.y) + "px";
+        previewBox.style.display = 'block';
+    });
 };
 
 function updateStatus(title, text, isError = false, debugLog = null) {
@@ -404,6 +424,7 @@ function showToast(message, duration = 3500) {
     setTimeout(() => { toast.style.display = 'none'; }, duration);
 }
 
+// Basic Tab Nav Switcher
 function switchTab(tabId, btnElement) {
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -477,6 +498,7 @@ function clearOverlays() {
     document.querySelectorAll('.marker').forEach(m => m.remove());
     document.querySelectorAll('.room-overlay').forEach(o => o.remove());
     document.getElementById('cadHandleLayer').innerHTML = '';
+    document.getElementById('liveDrawBox').style.display = 'none';
     calPoints = []; currentGlobalRoomsList = []; selectedRoomIndex = null;
     updateCalibrationLine();
 }
@@ -509,15 +531,13 @@ function handleCanvasClick(e) {
         return;
     }
 
-    // ==========================================
-    // FIXED TAP-TAP MANUAL DRAW LAYER (NO SCROLL INTERCEPTION)
-    // ==========================================
     if (isDrawingRoom) {
         if (!startDrawPoint) {
             startDrawPoint = {x: clickX, y: clickY};
-            updateStatus("Drawing Space", "📍 First corner locked! Now tap the opposite diagonal corner of the room to form the box.");
+            updateStatus("Drawing Space", "📍 First corner locked! Move your mouse/finger across the canvas to see the rectangle outline preview live, then tap corner 2.");
             showToast("📍 First corner dropped!");
         } else {
+            document.getElementById('liveDrawBox').style.display = 'none';
             const xmin = pxToNormalized(Math.min(startDrawPoint.x, clickX), rect.width);
             const xmax = pxToNormalized(Math.max(startDrawPoint.x, clickX), rect.width);
             const ymin = pxToNormalized(Math.min(startDrawPoint.y, clickY), rect.height);
@@ -605,7 +625,7 @@ function lockBaselineScale() {
 
 function startManualRoomDraw() {
     isDrawingRoom = true; startDrawPoint = null; deselectAllRooms();
-    document.getElementById('canvasContextTip').innerText = "📐 MANUAL MODE ACTIVE: Tap once for Corner 1, then tap again for Corner 2.";
+    document.getElementById('canvasContextTip').innerText = "📐 MANUAL MODE ACTIVE: Tap once for Corner 1, view visual rectangle live, then tap Corner 2.";
     updateStatus("Drawing Active", "Tap on the image canvas layout to mark the first corner of your room box.");
 }
 
@@ -623,7 +643,7 @@ function runAutomaticScaleFinder() {
     try {
         const base64Data = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
         appendLog("🤖 Auto-Scale: Searching bottom-left quadrant for SCALE BAR metrics...", "info");
-        const scalePrompt = "Look closely at the bottom-left area of this blueprint layout drawing sheet. There is a graphic SCALE BAR next to the words 'SCALE BAR 1:100'. The scale bar consists of a physical black horizontal line segment with vertical tick marks indicating length divisions (0.0m, 1.0m, 3.0m, 5.0m, 10.0m). Locate the EXACT start point of this horizontal line segment representing '0.0m' (do not target the text labels 'SCALE BAR' or 'GROUND') and the EXACT end point representing '10.0m'. Return their normalized [ymin, xmin] coordinates on a 0-1000 grid relative to the entire image sheet canvas borders. Return data strictly as a valid raw JSON object with NO backticks or outer wrapping characters. Formatting example: {\"start_coords\": [ymin, xmin], \"end_coords\": [ymax, xmax], \"scale_value\": 10}.";
+        const scalePrompt = "Focus exclusively on the graphical horizontal scale ruler bar printed on the lower boundaries of this plan sheet document sheet. Find the exact coordinate tick marked '0.0m' and the coordinate tick marked '10.0m'. Return their normalized positions relative to the sheet canvas borders on a 0-1000 integer grid framework. Output strictly a raw JSON object string with no formatting markdown symbols. Example target formatting: {\"start_coords\": [ymin, xmin], \"end_coords\": [ymax, xmax], \"scale_value\": 10}.";
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
         
         fetch(url, {
@@ -683,6 +703,8 @@ function runSmartRoomScan() {
         const base64Data = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
         const scanType = document.getElementById('scanTypeSelect').value;
         let promptText = "";
+        
+        // Dynamic full sheet mapping prevents drifts
         const coordinateWarning = " CRITICAL COGNITIVE MAPPING INSTRUCTION: Observe the entire drawing sheet canvas. The uploaded image contains white borders, a title block at the bottom, and a legend table on the far right. The actual floor plan house layout is located primarily in the left and center-left portion of the sheet. Your [ymin, xmin, ymax, xmax] coordinates MUST be relative to the absolute borders of the ENTIRE drawing sheet canvas (where [0,0] is the top-leftmost pixel of the uploaded image and [1000,1000] is the bottom-rightmost pixel of the uploaded image). Map them exactly to where they physically appear on the uploaded canvas sheet. BOUNDARY CONSTRAINTS: Each room on a plan is bounded by walls. Rooms are adjacent but CANNOT overlap each other.";
 
         if (scanType === 'all') {
@@ -851,6 +873,7 @@ function selectActiveRoom(index) {
             overlay.releasePointerCapture(ev.pointerId);
             overlay.removeEventListener('pointermove', onOverlayMove); overlay.removeEventListener('pointerup', onOverlayUp);
         }
+        overlay.onpointerup = onOverlayUp;
         overlay.addEventListener('pointermove', onOverlayMove); overlay.addEventListener('pointerup', onOverlayUp);
     };
 }
@@ -858,10 +881,10 @@ function selectActiveRoom(index) {
 function positionHandleElement(handle, type, overlay) {
     const t = parseFloat(overlay.style.top), l = parseFloat(overlay.style.left);
     const w = parseFloat(overlay.style.width), h = parseFloat(overlay.style.height);
-    if (type === 'tl') { handle.style.top = (t - 7) + "px"; handle.style.left = (l - 7) + "px"; }
-    if (type === 'tr') { handle.style.top = (t - 7) + "px"; handle.style.left = (l + w - 7) + "px"; }
-    if (type === 'bl') { handle.style.top = (t + h - 7) + "px"; handle.style.left = (l - 7) + "px"; }
-    if (type === 'br') { handle.style.top = (t + h - 7) + "px"; handle.style.left = (l + w - 7) + "px"; }
+    if (type === 'tl') { handle.style.top = (t - 12) + "px"; handle.style.left = (l - 12) + "px"; }
+    if (type === 'tr') { handle.style.top = (t - 12) + "px"; handle.style.left = (l + w - 12) + "px"; }
+    if (type === 'bl') { handle.style.top = (t + h - 12) + "px"; handle.style.left = (l - 12) + "px"; }
+    if (type === 'br') { handle.style.top = (t + h - 12) + "px"; handle.style.left = (l + w - 12) + "px"; }
 }
 
 function updateActiveRoomDataFromScreen(index, left, top, width, height, rect) {
