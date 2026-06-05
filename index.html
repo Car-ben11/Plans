@@ -9,6 +9,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+
     <style>
         :root {
             --primary: #2563eb;
@@ -30,6 +32,8 @@
         .container {
             max-width: 800px;
             margin: 0 auto;
+            position: relative;
+            padding-bottom: 40px; /* Space for the version footer */
         }
 
         h1 {
@@ -123,154 +127,5 @@
             margin-bottom: 12px;
         }
 
-        button {
-            width: 100%;
-            background: var(--primary);
-            color: white;
-            padding: 12px;
-            border: none;
-            border-radius: 6px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        button.secondary { background: #64748b; }
-        button.active-mode { background: #ea580c !important; }
-
-        .status-msg {
-            font-size: 0.85rem;
-            color: var(--primary);
-            margin-bottom: 12px;
-            font-weight: 500;
-            background: #eff6ff;
-            padding: 10px;
-            border-radius: 6px;
-        }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <h1>Plan Workspace & Room Scanner</h1>
-    
-    <div class="card" style="background: #f8fafc; padding: 12px;">
-        <label for="apiKeyInput">🤖 Google Gemini API Key Locked Status</label>
-        <input type="password" id="apiKeyInput" value="AQ.Ab8RN6LFUEMClQl0jMMUU-2pHx9GyojB8HQWG-WmbMiWxDp3Cg" disabled style="background:#e2e8f0; color:#64748b;">
-        <small style="color: #64748b;">Your unique key is securely hardcoded into the source application pipeline framework.</small>
-    </div>
-
-    <div class="card">
-        <label>1. Select Calibration Method</label>
-        <div class="btn-group">
-            <button id="scaleBarBtn" class="secondary" onclick="setCalibrationMode('scaleBar')">Use Scale Bar</button>
-            <button id="knownLineBtn" class="secondary" onclick="setCalibrationMode('knownLine')">Use Known Wall Line</button>
-        </div>
-
-        <div id="calibrationInputArea" style="display: none; margin-top: 12px;">
-            <label id="inputLabel" for="scaleInput">Enter Length of Selected Segment:</label>
-            <div class="btn-group">
-                <input type="number" id="scaleInput" value="10" placeholder="e.g., 10" style="margin-bottom:0; width: 60%;">
-                <select id="unitInput" style="padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
-                    <option value="meters">Meters (m)</option>
-                    <option value="mm">Millimeters (mm)</option>
-                </select>
-            </div>
-            <button id="activateTapBtn" style="margin-top: 10px; background: #e0f2fe; color: #0369a1;" onclick="startClickSequence()">📍 Tap Line Endpoints on Plan</button>
-        </div>
+        button
         
-        <label style="margin-top:16px;">2. Automation Controls</label>
-        <button id="scanBtn" onclick="runSmartRoomScan()" style="background: var(--success);">🤖 Auto-Detect Rooms (Scan for Beds)</button>
-    </div>
-
-    <div class="card">
-        <label>🗺️ Blueprint Interactive Canvas</label>
-        <input type="file" id="planImporter" accept="image/*,application/pdf" onchange="loadBlueprint(event)" style="margin-bottom: 10px;">
-        <div id="statusBox" class="status-msg">Upload a plan sheet to begin.</div>
-        
-        <div class="canvas-container" id="canvasWrapper">
-            <img id="blueprintImg" src="" alt="" onclick="handleCanvasClick(event)" style="display:none;">
-        </div>
-    </div>
-</div>
-
-<script>
-const EMBEDDED_GEMINI_KEY = document.getElementById('apiKeyInput').value;
-
-let originalImage = new Image();
-let calibrationMode = null; 
-let isCalibrating = false;
-let calPoints = [];
-let pixelsPerMeter = null; 
-
-function loadBlueprint(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const imgElement = document.getElementById('blueprintImg');
-    const reader = new FileReader();
-
-    reader.onload = function(e) {
-        imgElement.src = e.target.result;
-        imgElement.style.display = 'block';
-        originalImage.src = e.target.result;
-        
-        clearOverlays();
-        pixelsPerMeter = null;
-        document.getElementById('statusBox').style.color = "var(--primary)";
-        document.getElementById('statusBox').innerText = "Plan loaded. Select your preferred scale calibration method above.";
-    };
-    reader.readAsDataURL(file);
-}
-
-function clearOverlays() {
-    document.querySelectorAll('.marker').forEach(m => m.remove());
-    document.querySelectorAll('.room-overlay').forEach(o => o.remove());
-}
-
-function setCalibrationMode(mode) {
-    calibrationMode = mode;
-    document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active-mode'));
-    document.getElementById('calibrationInputArea').style.display = 'block';
-    
-    if (mode === 'scaleBar') {
-        document.getElementById('scaleBarBtn').classList.add('active-mode');
-        document.getElementById('inputLabel').innerText = "Enter full length of Scale Bar:";
-        document.getElementById('scaleInput').value = "10";
-        document.getElementById('unitInput').value = "meters";
-    } else {
-        document.getElementById('knownLineBtn').classList.add('active-mode');
-        document.getElementById('inputLabel').innerText = "Enter dimension length of the wall/object line:";
-        document.getElementById('scaleInput').value = "2400";
-        document.getElementById('unitInput').value = "mm";
-    }
-}
-
-function startClickSequence() {
-    if (!calibrationMode) return alert("Please pick a calibration method first!");
-    isCalibrating = true;
-    calPoints = [];
-    clearOverlays();
-    
-    if (calibrationMode === 'scaleBar') {
-        document.getElementById('statusBox').innerText = "📐 Scale Bar Calibration: Tap the START of the scale bar graphics, then tap the END.";
-    } else {
-        document.getElementById('statusBox').innerText = "📐 Custom Wall Line Calibration: Tap the START vertex of your known wall line, then tap the END vertex.";
-    }
-}
-
-function handleCanvasClick(e) {
-    if (!isCalibrating) return;
-
-    const img = document.getElementById('blueprintImg');
-    const wrapper = document.getElementById('canvasWrapper');
-    const rect = img.getBoundingClientRect();
-    
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
-
-    const marker = document.createElement('div');
-    marker.className = 'marker';
-    marker.style.left = `${clickX}px`;
-    marker.style.top = `${clickY
-    
