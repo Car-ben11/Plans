@@ -216,7 +216,7 @@
     <h1>Plan Workspace & Room Scanner</h1>
     
     <div class="card" style="background: #f8fafc; padding: 12px; font-size: 0.85rem; color: #64748b;">
-        🔒 <strong>Google Gemini Connection:</strong> Active (Production Route Engaged)
+        🔒 <strong>Google Gemini Connection:</strong> Active (Strict v1 Syntax Engaged)
     </div>
 
     <div class="card">
@@ -257,7 +257,7 @@
         </div>
     </div>
 
-    <div class="version-footer">VERSION 4.4</div>
+    <div class="version-footer">VERSION 4.5</div>
 </div>
 
 <script>
@@ -441,7 +441,6 @@ function runSmartRoomScan() {
         const base64Data = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
         statusBox.innerText = "🧠 Analyzing layout margins via production routing...";
 
-        // CHANGED ROUTING PATH BELOW FROM v1beta TO v1 TO SUPPORT THE FLASH MODEL SECURELY
         const url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=" + EM_KEY;
 
         const prompt = "Look closely at this architectural plan drawing layout. Identify any rooms that contain a bed drawing symbol (Bedrooms). For every bedroom found, estimate its bounding box coordinates inside the image framework. Return data strictly as a valid JSON array of objects. Do not wrap code blocks in backticks, return raw string text. JSON structure example format: " + 
@@ -454,7 +453,8 @@ function runSmartRoomScan() {
                     { inlineData: { mimeType: "image/jpeg", data: base64Data } }
                 ]
             }],
-            generationConfig: { responseMimeType: "application/json" }
+            // UPDATED THE SYSTEM KEY SLOTS FROM responseMimeType TO response_mime_type FOR V1 COMPLIANCE BELOW
+            generationConfig: { response_mime_type: "application/json" }
         };
 
         fetch(url, {
