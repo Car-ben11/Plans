@@ -198,6 +198,7 @@
             background: #eff6ff;
             padding: 10px;
             border-radius: 6px;
+            word-wrap: break-word;
         }
 
         .version-footer {
@@ -257,7 +258,7 @@
         </div>
     </div>
 
-    <div class="version-footer">VERSION 3.2</div>
+    <div class="version-footer">VERSION 3.3</div>
 </div>
 
 <script>
@@ -411,8 +412,9 @@ function recalculateScaleRatio() {
 function runSmartRoomScan() {
     if (!pixelsPerMeter) return alert("Calibrate plan dimensions first!");
 
-    document.getElementById('statusBox').style.color = "var(--primary)";
-    document.getElementById('statusBox').innerText = "🧠 Compressing and preparing file payload structure...";
+    const statusBox = document.getElementById('statusBox');
+    statusBox.style.color = "var(--primary)";
+    statusBox.innerText = "🧠 Formatting image layers for Google Cloud transfer...";
 
     const maxDimension = 1024; 
     let width = originalImage.width;
@@ -434,19 +436,17 @@ function runSmartRoomScan() {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(originalImage, 0, 0, width, height);
     
-    const base64Data = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+    // SAFE RE-ROUTING TRANSITION LAYER
+    try {
+        const base64Data = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
+        statusBox.innerText = "🧠 Connecting directly to Gemini 1.5 Flash Vision engine...";
 
-    document.getElementById('statusBox').innerText = "🧠 AI processing plan structural configurations...";
+        const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + EM_KEY;
 
-    const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + EM_KEY;
+        const prompt = "Look closely at this architectural plan drawing layout. Identify any rooms that contain a bed drawing symbol (Bedrooms). For every bedroom found, estimate its bounding box coordinates inside the image framework. Return data strictly as a valid JSON array of objects. Do not wrap code blocks in backticks, return raw string text. JSON structure example format: " + 
+        '[{"roomName": "Bedroom 1", "box_2d": [ymin, xmin, ymax, xmax]}] where coordinates are standard normalized integers between 0 and 1000 representing the image boundary grid limits.';
 
-    const prompt = "Look closely at this architectural plan drawing layout. Identify any rooms that contain a bed drawing symbol (Bedrooms). For every bedroom found, estimate its bounding box coordinates inside the image framework. Return data strictly as a valid JSON array of objects. Do not wrap code blocks in backticks, return raw string text. JSON structure example format: " + 
-    '[{"roomName": "Bedroom 1", "box_2d": [ymin, xmin, ymax, xmax]}] where coordinates are standard normalized integers between 0 and 1000 representing the image boundary grid limits.';
-
-    fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        const payload = {
             contents: [{
                 parts: [
                     { text: prompt },
@@ -454,22 +454,37 @@ function runSmartRoomScan() {
                 ]
             }],
             generationConfig: { responseMimeType: "application/json" }
+        };
+
+        fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
         })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (!data.candidates || !data.candidates[0].content.parts[0].text) {
-            throw new Error("API Limit or verification fault.");
-        }
-        const jsonText = data.candidates[0].content.parts[0].text;
-        const rooms = JSON.parse(jsonText);
-        plotRooms(rooms);
-    })
-    .catch(err => {
-        document.getElementById('statusBox').style.color = "red";
-        document.getElementById('statusBox').innerText = "AI Connection issue. Check your plan file limits or token availability.";
-        console.error(err);
-    });
+        .then(res => {
+            if (!res.ok) {
+                return res.text().then(text => { throw new Error(text) });
+            }
+            return res.json();
+        })
+        .then(data => {
+            if (!data.candidates || !data.candidates[0].content.parts[0].text) {
+                throw new Error("Empty response received from the Google server matrix.");
+            }
+            const jsonText = data.candidates[0].content.parts[0].text;
+            const rooms = JSON.parse(jsonText);
+            plotRooms(rooms);
+        })
+        .catch(err => {
+            statusBox.style.color = "red";
+            statusBox.innerText = "Google API Rejected Request: " + err.message;
+            console.error(err);
+        });
+
+    } catch (e) {
+        statusBox.style.color = "red";
+        statusBox.innerText = "Local Canvas Security Error: " + e.message;
+    }
 }
 
 function plotRooms(roomsList) {
