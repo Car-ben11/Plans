@@ -216,7 +216,7 @@
     <h1>Plan Workspace & Room Scanner</h1>
     
     <div class="card" style="background: #f8fafc; padding: 12px; font-size: 0.85rem; color: #64748b;">
-        🔒 <strong>Gemini API Connection:</strong> Active (Updated for AQ Keys)
+        🔒 <strong>Google Gemini Connection:</strong> Active (Header Secure Protocol Enabled)
     </div>
 
     <div class="card">
@@ -225,7 +225,7 @@
             <span id="uploadPromptText">📤 Tap to Upload Plan Screenshot (PNG or JPG)</span>
             <input type="file" id="planImporter" accept="image/*" onchange="loadBlueprint(event)">
         </div>
-        <div id="statusBox" class="status-msg">Please upload an image snapshot of your blueprint to begin.</div>
+        <div id="statusBox" class="status-msg">Please upload a plan screenshot to begin.</div>
     </div>
 
     <div class="card">
@@ -238,7 +238,7 @@
         <div id="calibrationInputArea" style="display: none; margin-top: 12px;">
             <label id="inputLabel" for="scaleInput">Enter Real-World Length:</label>
             <div class="btn-group">
-                <input type="number" id="scaleInput" value="10" style="margin-bottom:0; width: 60%;">
+                <input type="number" id="scaleInput" value="5" style="margin-bottom:0; width: 60%;">
                 <select id="unitInput" style="padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
                     <option value="meters">Meters (m)</option>
                     <option value="mm">Millimeters (mm)</option>
@@ -258,11 +258,11 @@
         </div>
     </div>
 
-    <div class="version-footer">VERSION 3.4</div>
+    <div class="version-footer">VERSION 3.6</div>
 </div>
 
 <script>
-// Locked configuration pointing directly to your updated verification credentials
+// Hardcoded with your updated active AQ credentials
 const EM_KEY = "AQ.Ab8RN6J9RNhQq7v3a9SA87VGZGr7fjn73zyJc7Lx4UgM94IQCQ";
 
 let originalImage = new Image();
@@ -415,7 +415,7 @@ function runSmartRoomScan() {
 
     const statusBox = document.getElementById('statusBox');
     statusBox.style.color = "var(--primary)";
-    statusBox.innerText = "🧠 Formatting image structural layout data layers...";
+    statusBox.innerText = "🧠 Compressing and preparing file payload structure...";
 
     const maxDimension = 1024; 
     let width = originalImage.width;
@@ -439,10 +439,10 @@ function runSmartRoomScan() {
     
     try {
         const base64Data = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
-        statusBox.innerText = "🧠 Initializing handshake with updated Google API v1 core channel...";
+        statusBox.innerText = "🧠 Contacting Google Cloud Server via Secure Request Payload...";
 
-        // CHANGED ENDPOINT URL STRUCTURE BELOW TO EXPLICITLY PERMIT NEW AQ KEY PROCESSING
-        const url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=" + EM_KEY;
+        // ROUTED VIA SECURE CORE CHANNEL URL
+        const url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent";
 
         const prompt = "Look closely at this architectural plan drawing layout. Identify any rooms that contain a bed drawing symbol (Bedrooms). For every bedroom found, estimate its bounding box coordinates inside the image framework. Return data strictly as a valid JSON array of objects. Do not wrap code blocks in backticks, return raw string text. JSON structure example format: " + 
         '[{"roomName": "Bedroom 1", "box_2d": [ymin, xmin, ymax, xmax]}] where coordinates are standard normalized integers between 0 and 1000 representing the image boundary grid limits.';
@@ -459,7 +459,10 @@ function runSmartRoomScan() {
 
         fetch(url, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                "x-goog-api-key": EM_KEY // MOVED KEY DIRECTLY INSIDE SECURE REQUEST HEADERS TO SATISFY AQ ACCESS PROTOCOLS
+            },
             body: JSON.stringify(payload)
         })
         .then(res => {
@@ -484,7 +487,7 @@ function runSmartRoomScan() {
 
     } catch (e) {
         statusBox.style.color = "red";
-        statusBox.innerText = "Local Rendering Error: " + e.message;
+        statusBox.innerText = "Canvas Extraction Failure: " + e.message;
     }
 }
 
@@ -498,6 +501,8 @@ function plotRooms(roomsList) {
     document.getElementById('statusBox').innerText = "Successfully mapped " + roomsList.length + " rooms!";
 
     roomsList.forEach(room => {
+        if (!room.box_2d) return;
+        
         const ymin = (room.box_2d[0] / 1000) * rect.height;
         const xmin = (room.box_2d[1] / 1000) * rect.width;
         const ymax = (room.box_2d[2] / 1000) * rect.height;
