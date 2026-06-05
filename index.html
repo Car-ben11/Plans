@@ -216,7 +216,7 @@
     <h1>Plan Workspace & Room Scanner</h1>
     
     <div class="card" style="background: #f8fafc; padding: 12px; font-size: 0.85rem; color: #64748b;">
-        🔒 <strong>Google Gemini Connection:</strong> Active (Header Secure Request Channels Enabled)
+        🔒 <strong>Google Gemini Connection:</strong> Active (Secure Payload Ready)
     </div>
 
     <div class="card">
@@ -257,11 +257,10 @@
         </div>
     </div>
 
-    <div class="version-footer">VERSION 3.9</div>
+    <div class="version-footer">VERSION 4.0</div>
 </div>
 
 <script>
-// Hardcoded lookup pointing directly to your verified credentials block 
 const EM_KEY = "AQ.Ab8RN6J9RNhQq7v3a9SA87VGZGr7fjn73zyJc7Lx4UgM94IQCQ";
 
 let originalImage = new Image();
@@ -292,7 +291,7 @@ function loadBlueprint(event) {
         imgElement.src = e.target.result;
         canvasCard.style.display = 'block';
         originalImage.src = e.target.result;
-        statusBox.innerText = "Image loaded successfully. Tap 'Drop 2 Calibration Pins' to coordinate layout margins.";
+        statusBox.innerText = "Image loaded successfully. Tap 'Drop 2 Calibration Pins' to begin layout alignment.";
     };
     reader.readAsDataURL(file);
 }
@@ -403,5 +402,133 @@ function calculateMeasurements() {
     
     const dx = calPoints[1].x - calPoints[0].x;
     const dy = calPoints[1].y - calPoints[0].y;
-    const pixelDistance = Math.sqrt(dx*dx + dy*
+    const pixelDistance = Math.sqrt(dx*dx + dy*dy);
     
+    const liveDistanceMeters = pixelDistance / pixelsPerMeter;
+    
+    document.getElementById('statusBox').style.color = "var(--primary)";
+    document.getElementById('statusBox').innerText = "📏 Active Measurement: " + liveDistanceMeters.toFixed(2) + " meters";
+}
+
+function runSmartRoomScan() {
+    if (!pixelsPerMeter) return alert("Please lock down your baseline scale metrics first!");
+
+    const statusBox = document.getElementById('statusBox');
+    statusBox.style.color = "var(--primary)";
+    statusBox.innerText = "🧠 Compressing and optimizing blueprint layer pixels...";
+
+    const maxDimension = 1024; 
+    let width = originalImage.width;
+    let height = originalImage.height;
+
+    if (width > maxDimension || height > maxDimension) {
+        if (width > height) {
+            height *= maxDimension / width;
+            width = maxDimension;
+        } else {
+            width *= maxDimension / height;
+            height = maxDimension;
+        }
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(originalImage, 0, 0, width, height);
+    
+    try {
+        const base64Data = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
+        statusBox.innerText = "🧠 Launching secure pipeline handshake with Google Gemini v1 Core Server...";
+
+        const url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent";
+
+        const prompt = "Look closely at this architectural plan drawing layout. Identify any rooms that contain a bed drawing symbol (Bedrooms). For every bedroom found, estimate its bounding box coordinates inside the image framework. Return data strictly as a valid JSON array of objects. Do not wrap code blocks in backticks, return raw string text. JSON structure example format: " + 
+        '[{"roomName": "Bedroom 1", "box_2d": [ymin, xmin, ymax, xmax]}] where coordinates are standard normalized integers between 0 and 1000 representing the image boundary grid limits.';
+
+        const payload = {
+            contents: [{
+                parts: [
+                    { text: prompt },
+                    { inlineData: { mimeType: "image/jpeg", data: base64Data } }
+                ]
+            }],
+            generationConfig: { responseMimeType: "application/json" }
+        };
+
+        fetch(url, {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json",
+                "x-goog-api-key": EM_KEY
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(res => {
+            if (!res.ok) {
+                return res.text().then(text => { throw new Error(text) });
+            }
+            return res.json();
+        })
+        .then(data => {
+            if (!data.candidates || !data.candidates[0].content.parts[0].text) {
+                throw new Error("Empty response token.");
+            }
+            const jsonText = data.candidates[0].content.parts[0].text;
+            const rooms = JSON.parse(jsonText);
+            plotRooms(rooms);
+        })
+        .catch(err => {
+            statusBox.style.color = "red";
+            statusBox.innerText = "API Handshake Rejection: " + err.message;
+            console.error(err);
+        });
+
+    } catch (e) {
+        statusBox.style.color = "red";
+        statusBox.innerText = "Canvas Processing Fault: " + e.message;
+    }
+}
+
+function plotRooms(roomsList) {
+    const img = document.getElementById('blueprintImg');
+    const wrapper = document.getElementById('canvasWrapper');
+    const rect = img.getBoundingClientRect();
+    
+    document.querySelectorAll('.room-overlay').forEach(o => o.remove());
+    document.getElementById('statusBox').style.color = "green";
+    document.getElementById('statusBox').innerText = "Successfully mapped " + roomsList.length + " rooms!";
+
+    roomsList.forEach(room => {
+        if (!room.box_2d) return;
+        
+        const ymin = (room.box_2d[0] / 1000) * rect.height;
+        const xmin = (room.box_2d[1] / 1000) * rect.width;
+        const ymax = (room.box_2d[2] / 1000) * rect.height;
+        const xmax = (room.box_2d[3] / 1000) * rect.width;
+
+        const boxWidthPx = xmax - xmin;
+        const boxHeightPx = ymax - ymin;
+
+        const realWidthMeters = boxWidthPx / pixelsPerMeter;
+        const realHeightMeters = boxHeightPx / pixelsPerMeter;
+        const totalSquareMeters = realWidthMeters * realHeightMeters;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'room-overlay';
+        overlay.style.top = ymin + "px";
+        overlay.style.left = xmin + "px";
+        overlay.style.width = boxWidthPx + "px";
+        overlay.style.height = boxHeightPx + "px";
+
+        const label = document.createElement('div');
+        label.className = 'room-label';
+        label.innerText = room.roomName + ": " + totalSquareMeters.toFixed(1) + " m²";
+        
+        overlay.appendChild(label);
+        wrapper.appendChild(overlay);
+    });
+}
+</script>
+</body>
+</html>
