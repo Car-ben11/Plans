@@ -100,15 +100,6 @@
             user-select: none;
         }
 
-        /* Fallback viewer frame for direct PDF sandboxing */
-        #pdfFallbackView {
-            width: 100%;
-            height: 450px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            display: none;
-        }
-
         .room-overlay {
             position: absolute;
             border: 2px solid var(--success);
@@ -228,12 +219,12 @@
     </div>
 
     <div class="card">
-        <label>File Importer</label>
+        <label>Plan Image Importer</label>
         <div class="upload-dropzone" onclick="document.getElementById('planImporter').click()">
-            <span id="uploadPromptText">📤 Tap to Open Files / Photos (PDF or Image)</span>
-            <input type="file" id="planImporter" accept="image/*,application/pdf" onchange="loadBlueprint(event)">
+            <span id="uploadPromptText">📤 Tap to Upload Plan Screenshot (PNG or JPG)</span>
+            <input type="file" id="planImporter" accept="image/*" onchange="loadBlueprint(event)">
         </div>
-        <div id="statusBox" class="status-msg">Please upload an image plan or PDF blueprint file to begin.</div>
+        <div id="statusBox" class="status-msg">Please upload an image snapshot of your blueprint to begin.</div>
     </div>
 
     <div class="card">
@@ -244,7 +235,7 @@
         </div>
 
         <div id="calibrationInputArea" style="display: none; margin-top: 12px;">
-            <label id="inputLabel" for="scaleInput">Enter Length:</label>
+            <label id="inputLabel" for="scaleInput">Enter Real-World Length:</label>
             <div class="btn-group">
                 <input type="number" id="scaleInput" value="10" style="margin-bottom:0; width: 60%;">
                 <select id="unitInput" style="padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
@@ -263,11 +254,10 @@
         <label>🗺️ Blueprint Workspace Canvas (Tip: Drag pins to readjust)</label>
         <div class="canvas-container" id="canvasWrapper">
             <img id="blueprintImg" src="" alt="" onclick="handleCanvasClick(event)">
-            <iframe id="pdfFallbackView"></iframe>
         </div>
     </div>
 
-    <div class="version-footer">VERSION 3.1</div>
+    <div class="version-footer">VERSION 3.2</div>
 </div>
 
 <script>
@@ -278,49 +268,30 @@ let calibrationMode = null;
 let isCalibrating = false;
 let calPoints = [];
 let pixelsPerMeter = null; 
-let isPdfFile = false;
 
 function loadBlueprint(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     const imgElement = document.getElementById('blueprintImg');
-    const fallbackFrame = document.getElementById('pdfFallbackView');
     const statusBox = document.getElementById('statusBox');
     const canvasCard = document.getElementById('canvasCard');
     const promptText = document.getElementById('uploadPromptText');
     
     statusBox.style.color = "var(--primary)";
-    statusBox.innerText = "Loading plan graphic layers...";
+    statusBox.innerText = "Loading plan image layers...";
     promptText.innerText = "📄 " + file.name;
     clearOverlays();
     pixelsPerMeter = null;
 
     const reader = new FileReader();
-
-    if (file.type === "application/pdf") {
-        isPdfFile = true;
-        reader.onload = function(e) {
-            // Display PDF safely inside native secure sandbox
-            imgElement.style.display = 'none';
-            fallbackFrame.style.display = 'block';
-            fallbackFrame.src = e.target.result;
-            canvasCard.style.display = 'block';
-            statusBox.innerText = "PDF Document preview active. Note: For active crosshair calibration and AI room scanning, please use a PNG/JPG screenshot on mobile devices.";
-        };
-        reader.readAsDataURL(file);
-    } else {
-        isPdfFile = false;
-        reader.onload = function(e) {
-            fallbackFrame.style.display = 'none';
-            imgElement.style.display = 'block';
-            imgElement.src = e.target.result;
-            canvasCard.style.display = 'block';
-            originalImage.src = e.target.result;
-            statusBox.innerText = "Image loaded successfully. Choose your preferred scaling calibration method above.";
-        };
-        reader.readAsDataURL(file);
-    }
+    reader.onload = function(e) {
+        imgElement.src = e.target.result;
+        canvasCard.style.display = 'block';
+        originalImage.src = e.target.result;
+        statusBox.innerText = "Image loaded successfully. Select your preferred scaling calibration method above.";
+    };
+    reader.readAsDataURL(file);
 }
 
 function clearOverlays() {
@@ -330,10 +301,6 @@ function clearOverlays() {
 }
 
 function setCalibrationMode(mode) {
-    if (isPdfFile) {
-        alert("To calibrate crosshairs or run AI scans, please upload an image screenshot of your plan page.");
-        return;
-    }
     calibrationMode = mode;
     document.getElementById('scaleBarBtn').classList.remove('active-mode');
     document.getElementById('knownLineBtn').classList.remove('active-mode');
@@ -442,7 +409,6 @@ function recalculateScaleRatio() {
 }
 
 function runSmartRoomScan() {
-    if (isPdfFile) return alert("Please upload an image format snapshot to run automated AI measurements.");
     if (!pixelsPerMeter) return alert("Calibrate plan dimensions first!");
 
     document.getElementById('statusBox').style.color = "var(--primary)";
