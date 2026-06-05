@@ -124,33 +124,30 @@
             white-space: nowrap;
         }
 
-        /* NEW ULTRA-TINY DRAGGABLE MICROSCOPIC PRECISION SIGHT TARGET */
         .marker {
             position: absolute;
-            width: 14px; /* Significantly reduced size footprint */
+            width: 14px;
             height: 14px;
-            background: rgba(239, 68, 68, 0.25); /* Faint tint translucent window layout */
+            background: rgba(239, 68, 68, 0.25);
             border: 1px solid rgba(239, 68, 68, 0.6);
             border-radius: 50%;
             transform: translate(-50%, -50%);
             z-index: 100;
-            cursor: move; /* Indicates drag capability directly to user visual loops */
-            touch-action: none; /* Required parameter to lock browser scrolling on mobile touch drags */
+            cursor: move;
+            touch-action: none;
         }
 
-        /* Core ultra-thin hairline horizontal crossing line */
         .marker::before {
             content: '';
             position: absolute;
             top: 50%;
             left: -5px;
-            width: 24px; /* Extends slightly past boundaries to align elements crisply */
+            width: 24px;
             height: 1px;
             background: #ef4444;
             transform: translateY(-50%);
         }
 
-        /* Core ultra-thin hairline vertical crossing line */
         .marker::after {
             content: '';
             position: absolute;
@@ -262,7 +259,7 @@
         </div>
     </div>
 
-    <div class="version-footer">VERSION 2.8</div>
+    <div class="version-footer">VERSION 2.9</div>
 </div>
 
 <script>
@@ -314,7 +311,7 @@ function loadBlueprint(event) {
                     };
                     
                     page.render(renderContext).promise.then(function () {
-                        const base64CanvasImage = canvas.toDataURL('image/jpeg');
+                        const base64CanvasImage = canvas.toDataURL('image/jpeg', 0.8);
                         imgElement.src = base64CanvasImage;
                         canvasCard.style.display = 'block';
                         originalImage.src = base64CanvasImage;
@@ -382,7 +379,7 @@ function handleCanvasClick(e) {
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
 
-    const pointIndex = calPoints.length; // Save current index designation path (0 or 1)
+    const pointIndex = calPoints.length; 
     calPoints.push({x: clickX, y: clickY});
 
     createDraggableMarker(clickX, clickY, pointIndex, wrapper, img);
@@ -393,7 +390,6 @@ function handleCanvasClick(e) {
     }
 }
 
-// INJECTS DRAG CAPABILITIES FOR BOTH COMPUTER MOUSE AND MOBILE TOUCH EVENT GESTURES
 function createDraggableMarker(x, y, index, wrapper, imgElement) {
     const marker = document.createElement('div');
     marker.className = 'marker';
@@ -406,7 +402,6 @@ function createDraggableMarker(x, y, index, wrapper, imgElement) {
     
     wrapper.appendChild(marker);
 
-    // Event listener mappings for handling pointer movements seamlessly
     marker.addEventListener('pointerdown', function(e) {
         e.preventDefault();
         marker.setPointerCapture(e.pointerId);
@@ -416,14 +411,12 @@ function createDraggableMarker(x, y, index, wrapper, imgElement) {
             let newX = ev.clientX - rect.left;
             let newY = ev.clientY - rect.top;
 
-            // Clamp positions to stay within visible canvas areas
             newX = Math.max(0, Math.min(newX, rect.width));
             newY = Math.max(0, Math.min(newY, rect.height));
 
             marker.style.left = newX + "px";
             marker.style.top = newY + "px";
 
-            // Live-update underlying mathematical lookup tables
             calPoints[index] = {x: newX, y: newY};
             
             if (calPoints.length === 2 && !isCalibrating) {
@@ -462,86 +455,33 @@ function runSmartRoomScan() {
     if (!pixelsPerMeter) return alert("Calibrate plan dimensions first!");
 
     document.getElementById('statusBox').style.color = "var(--primary)";
-    document.getElementById('statusBox').innerText = "🧠 AI processing plan structural configurations...";
+    document.getElementById('statusBox').innerText = "🧠 Compressing and preparing file payload structure...";
+
+    // --- NEW SMART COMPRESSION LAYER ---
+    const maxDimension = 1024; // Standard optimized AI vision size limits
+    let width = originalImage.width;
+    let height = originalImage.height;
+
+    if (width > maxDimension || height > maxDimension) {
+        if (width > height) {
+            height *= maxDimension / width;
+            width = maxDimension;
+        } else {
+            width *= maxDimension / height;
+            height = maxDimension;
+        }
+    }
 
     const canvas = document.createElement('canvas');
-    canvas.width = originalImage.width;
-    canvas.height = originalImage.height;
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(originalImage, 0, 0);
-    const base64Data = canvas.toDataURL('image/jpeg').split(',')[1];
-
-    const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + EM_KEY;
-
-    const prompt = "Look closely at this architectural plan drawing layout. Identify any rooms that contain a bed drawing symbol (Bedrooms). For every bedroom found, estimate its bounding box coordinates inside the image framework. Return data strictly as a valid JSON array of objects. Do not wrap code blocks in backticks, return raw string text. JSON structure example format: " + 
-    '[{"roomName": "Bedroom 1", "box_2d": [ymin, xmin, ymax, xmax]}] where coordinates are standard normalized integers between 0 and 1000 representing the image boundary grid limits.';
-
-    fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            contents: [{
-                parts: [
-                    { text: prompt },
-                    { inlineData: { mimeType: "image/jpeg", data: base64Data } }
-                ]
-            }],
-            generationConfig: { responseMimeType: "application/json" }
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (!data.candidates || !data.candidates[0].content.parts[0].text) {
-            throw new Error("API Limit or verification fault.");
-        }
-        const jsonText = data.candidates[0].content.parts[0].text;
-        const rooms = JSON.parse(jsonText);
-        plotRooms(rooms);
-    })
-    .catch(err => {
-        document.getElementById('statusBox').style.color = "red";
-        document.getElementById('statusBox').innerText = "AI Connection issue. Check your plan file limits or token availability.";
-        console.error(err);
-    });
-}
-
-function plotRooms(roomsList) {
-    const img = document.getElementById('blueprintImg');
-    const wrapper = document.getElementById('canvasWrapper');
-    const rect = img.getBoundingClientRect();
+    ctx.drawImage(originalImage, 0, 0, width, height);
     
-    document.querySelectorAll('.room-overlay').forEach(o => o.remove());
-    document.getElementById('statusBox').style.color = "green";
-    document.getElementById('statusBox').innerText = "Successfully mapped " + roomsList.length + " rooms!";
+    // Outputs a lightweight 80% quality compressed JPEG text string
+    const base64Data = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
 
-    roomsList.forEach(room => {
-        const ymin = (room.box_2d[0] / 1000) * rect.height;
-        const xmin = (room.box_2d[1] / 1000) * rect.width;
-        const ymax = (room.box_2d[2] / 1000) * rect.height;
-        const xmax = (room.box_2d[3] / 1000) * rect.width;
+    document.getElementById('statusBox').innerText = "🧠 AI processing plan structural configurations...";
 
-        const boxWidthPx = xmax - xmin;
-        const boxHeightPx = ymax - ymin;
-
-        const realWidthMeters = boxWidthPx / pixelsPerMeter;
-        const realHeightMeters = boxHeightPx / pixelsPerMeter;
-        const totalSquareMeters = realWidthMeters * realHeightMeters;
-
-        const overlay = document.createElement('div');
-        overlay.className = 'room-overlay';
-        overlay.style.top = ymin + "px";
-        overlay.style.left = xmin + "px";
-        overlay.style.width = boxWidthPx + "px";
-        overlay.style.height = boxHeightPx + "px";
-
-        const label = document.createElement('div');
-        label.className = 'room-label';
-        label.innerText = room.roomName + ": " + totalSquareMeters.toFixed(1) + " m²";
-        
-        overlay.appendChild(label);
-        wrapper.appendChild(overlay);
-    });
-}
-</script>
-</body>
-</html>
+    const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?
+    
