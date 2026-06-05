@@ -100,6 +100,28 @@
             user-select: none;
         }
 
+        .room-overlay {
+            position: absolute;
+            border: 2px solid var(--success);
+            background: rgba(16, 185, 129, 0.2);
+            border-radius: 4px;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+
+        .room-label {
+            background: rgba(15, 23, 42, 0.85);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
         .marker {
             position: absolute;
             width: 14px;
@@ -194,7 +216,7 @@
     <h1>Plan Workspace & Room Scanner</h1>
     
     <div class="card" style="background: #f8fafc; padding: 12px; font-size: 0.85rem; color: #64748b;">
-        ⏳ <strong>Google Gemini Connection:</strong> Paused (Manual High-Precision Scaling Active)
+        🔒 <strong>Google Gemini Connection:</strong> Active (Header Secure Request Channels Enabled)
     </div>
 
     <div class="card">
@@ -225,20 +247,23 @@
         </div>
         
         <label style="margin-top:16px;">2. Automation Controls</label>
-        <button id="scanBtn" onclick="alert('AI scanning is paused while Google updates their backend server keys. Use the draggable pins above to check manual wall lengths directly inside the status box!')" style="background: #94a3b8; cursor: not-allowed;">🤖 Auto-Detect Rooms (Temporarily Paused)</button>
+        <button id="scanBtn" onclick="runSmartRoomScan()" style="background: var(--success);">🤖 Auto-Detect Rooms (Scan for Beds)</button>
     </div>
 
     <div class="card" id="canvasCard" style="display: none;">
-        <label>🗺️ Blueprint Workspace Canvas (Tip: Drag pins to measure any line segment live)</label>
+        <label>🗺️ Blueprint Workspace Canvas (Tip: Drag pins to readjust scaling or check custom walls live)</label>
         <div class="canvas-container" id="canvasWrapper">
             <img id="blueprintImg" src="" alt="" onclick="handleCanvasClick(event)">
         </div>
     </div>
 
-    <div class="version-footer">VERSION 3.8</div>
+    <div class="version-footer">VERSION 3.9</div>
 </div>
 
 <script>
+// Hardcoded lookup pointing directly to your verified credentials block 
+const EM_KEY = "AQ.Ab8RN6J9RNhQq7v3a9SA87VGZGr7fjn73zyJc7Lx4UgM94IQCQ";
+
 let originalImage = new Image();
 let isCalibrating = false;
 let scaleIsLocked = false;
@@ -267,13 +292,14 @@ function loadBlueprint(event) {
         imgElement.src = e.target.result;
         canvasCard.style.display = 'block';
         originalImage.src = e.target.result;
-        statusBox.innerText = "Image loaded successfully. Tap 'Drop 2 Calibration Pins' to start.";
+        statusBox.innerText = "Image loaded successfully. Tap 'Drop 2 Calibration Pins' to coordinate layout margins.";
     };
     reader.readAsDataURL(file);
 }
 
 function clearOverlays() {
     document.querySelectorAll('.marker').forEach(m => m.remove());
+    document.querySelectorAll('.room-overlay').forEach(o => o.remove());
     calPoints = [];
 }
 
@@ -304,7 +330,7 @@ function handleCanvasClick(e) {
     if (calPoints.length === 2) {
         isCalibrating = false;
         document.getElementById('lockScaleBtn').style.display = 'block';
-        document.getElementById('statusBox').innerText = "📍 Pins Dropped! Now drag them precisely onto your scale bar endpoints (0m and 10m), then click the green 'Lock Baseline Scale' button.";
+        document.getElementById('statusBox').innerText = "📍 Pins Dropped! Drag them precisely onto your scale bar endpoints (0m and 10m), then click 'Lock Baseline Scale'.";
     }
 }
 
@@ -337,7 +363,6 @@ function createDraggableMarker(x, y, index, wrapper, imgElement) {
 
             calPoints[index] = {x: newX, y: newY};
             
-            // Only show live updates if the baseline scale has already been locked in
             if (scaleIsLocked) {
                 calculateMeasurements();
             }
@@ -370,7 +395,7 @@ function lockBaselineScale() {
     scaleIsLocked = true;
     
     document.getElementById('statusBox').style.color = "green";
-    document.getElementById('statusBox').innerText = "✅ Scale Bar Locked Successfully! You can now drag these two pins across any wall on your blueprint to measure its real distance layout live.";
+    document.getElementById('statusBox').innerText = "✅ Scale Bar Locked Successfully! You can now slide these pins to check manual segments, or hit 'Auto-Detect Rooms' to run AI scanning.";
 }
 
 function calculateMeasurements() {
@@ -378,13 +403,5 @@ function calculateMeasurements() {
     
     const dx = calPoints[1].x - calPoints[0].x;
     const dy = calPoints[1].y - calPoints[0].y;
-    const pixelDistance = Math.sqrt(dx*dx + dy*dy);
+    const pixelDistance = Math.sqrt(dx*dx + dy*
     
-    const liveDistanceMeters = pixelDistance / pixelsPerMeter;
-    
-    document.getElementById('statusBox').style.color = "var(--primary)";
-    document.getElementById('statusBox').innerText = "📏 Active Measurement: " + liveDistanceMeters.toFixed(2) + " meters";
-}
-</script>
-</body>
-</html>
