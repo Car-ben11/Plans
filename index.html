@@ -166,7 +166,7 @@
         }
 
         button.secondary { background: #64748b; }
-        button.active-mode { background: #ea580c !important; }
+        button.success-btn { background: var(--success); }
 
         .status-msg {
             font-size: 0.85rem;
@@ -194,7 +194,7 @@
     <h1>Plan Workspace & Room Scanner</h1>
     
     <div class="card" style="background: #f8fafc; padding: 12px; font-size: 0.85rem; color: #64748b;">
-        ⏳ <strong>Google Gemini Connection:</strong> Paused (Awaiting Google Key Infrastructure Fix)
+        ⏳ <strong>Google Gemini Connection:</strong> Paused (Manual High-Precision Scaling Active)
     </div>
 
     <div class="card">
@@ -211,13 +211,17 @@
         <div id="calibrationInputArea">
             <label for="scaleInput">Enter Length of Scale Bar:</label>
             <div class="btn-group">
-                <input type="number" id="scaleInput" value="5" style="margin-bottom:0; width: 60%;">
+                <input type="number" id="scaleInput" value="10" style="margin-bottom:0; width: 60%;">
                 <select id="unitInput" style="padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
                     <option value="meters">Meters (m)</option>
                     <option value="mm">Millimeters (mm)</option>
                 </select>
             </div>
-            <button id="activateTapBtn" style="margin-top: 10px; background: #e0f2fe; color: #0369a1;" onclick="startClickSequence()">📍 Tap & Align Scale Bar</button>
+            
+            <div class="btn-group" style="margin-top: 12px;">
+                <button id="activateTapBtn" class="secondary" onclick="startClickSequence()">📍 Drop 2 Calibration Pins</button>
+                <button id="lockScaleBtn" class="success-btn" onclick="lockBaselineScale()" style="display: none;">🔒 Lock Baseline Scale</button>
+            </div>
         </div>
         
         <label style="margin-top:16px;">2. Automation Controls</label>
@@ -231,12 +235,13 @@
         </div>
     </div>
 
-    <div class="version-footer">VERSION 3.7</div>
+    <div class="version-footer">VERSION 3.8</div>
 </div>
 
 <script>
 let originalImage = new Image();
 let isCalibrating = false;
+let scaleIsLocked = false;
 let calPoints = [];
 let pixelsPerMeter = null; 
 
@@ -254,13 +259,15 @@ function loadBlueprint(event) {
     promptText.innerText = "📄 " + file.name;
     clearOverlays();
     pixelsPerMeter = null;
+    scaleIsLocked = false;
+    document.getElementById('lockScaleBtn').style.display = 'none';
 
     const reader = new FileReader();
     reader.onload = function(e) {
         imgElement.src = e.target.result;
         canvasCard.style.display = 'block';
         originalImage.src = e.target.result;
-        statusBox.innerText = "Image loaded successfully. Tap 'Tap & Align Scale Bar' to set up your target measurements.";
+        statusBox.innerText = "Image loaded successfully. Tap 'Drop 2 Calibration Pins' to start.";
     };
     reader.readAsDataURL(file);
 }
@@ -272,8 +279,11 @@ function clearOverlays() {
 
 function startClickSequence() {
     isCalibrating = true;
+    scaleIsLocked = false;
     clearOverlays();
-    document.getElementById('statusBox').innerText = "📐 Calibration Active: Tap point 1 on the scale bar, then tap point 2.";
+    document.getElementById('lockScaleBtn').style.display = 'none';
+    document.getElementById('statusBox').style.color = "var(--primary)";
+    document.getElementById('statusBox').innerText = "📐 Setup: Tap anywhere twice on the plan to drop your 2 positioning pins.";
 }
 
 function handleCanvasClick(e) {
@@ -293,7 +303,8 @@ function handleCanvasClick(e) {
 
     if (calPoints.length === 2) {
         isCalibrating = false;
-        recalculateScaleRatio();
+        document.getElementById('lockScaleBtn').style.display = 'block';
+        document.getElementById('statusBox').innerText = "📍 Pins Dropped! Now drag them precisely onto your scale bar endpoints (0m and 10m), then click the green 'Lock Baseline Scale' button.";
     }
 }
 
@@ -325,7 +336,11 @@ function createDraggableMarker(x, y, index, wrapper, imgElement) {
             marker.style.top = newY + "px";
 
             calPoints[index] = {x: newX, y: newY};
-            recalculateScaleRatio();
+            
+            // Only show live updates if the baseline scale has already been locked in
+            if (scaleIsLocked) {
+                calculateMeasurements();
+            }
         }
 
         function onPointerUp(ev) {
@@ -339,7 +354,7 @@ function createDraggableMarker(x, y, index, wrapper, imgElement) {
     });
 }
 
-function recalculateScaleRatio() {
+function lockBaselineScale() {
     if (calPoints.length < 2) return;
     
     const dx = calPoints[1].x - calPoints[0].x;
@@ -351,15 +366,24 @@ function recalculateScaleRatio() {
         userLength = userLength / 1000;
     }
     
-    // First setup sets the pixel tracking baseline
-    if (pixelsPerMeter === null) {
-        pixelsPerMeter = pixelDistance / userLength;
-        document.getElementById('statusBox').innerText = "✨ Baseline Scale Locked! Tip: You can now drag these pins to measure any room wall directly, and the exact real-world distance will print below.";
-    } else {
-        // Subsequent movements print out active live dimensions
-        const liveDistanceMeters = pixelDistance / pixelsPerMeter;
-        document.getElementById('statusBox').innerText = "📏 Active Measurement: " + liveDistanceMeters.toFixed(2) + " meters";
-    }
+    pixelsPerMeter = pixelDistance / userLength;
+    scaleIsLocked = true;
+    
+    document.getElementById('statusBox').style.color = "green";
+    document.getElementById('statusBox').innerText = "✅ Scale Bar Locked Successfully! You can now drag these two pins across any wall on your blueprint to measure its real distance layout live.";
+}
+
+function calculateMeasurements() {
+    if (calPoints.length < 2 || pixelsPerMeter === null) return;
+    
+    const dx = calPoints[1].x - calPoints[0].x;
+    const dy = calPoints[1].y - calPoints[0].y;
+    const pixelDistance = Math.sqrt(dx*dx + dy*dy);
+    
+    const liveDistanceMeters = pixelDistance / pixelsPerMeter;
+    
+    document.getElementById('statusBox').style.color = "var(--primary)";
+    document.getElementById('statusBox').innerText = "📏 Active Measurement: " + liveDistanceMeters.toFixed(2) + " meters";
 }
 </script>
 </body>
