@@ -100,28 +100,6 @@
             user-select: none;
         }
 
-        .room-overlay {
-            position: absolute;
-            border: 2px solid var(--success);
-            background: rgba(16, 185, 129, 0.2);
-            border-radius: 4px;
-            pointer-events: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-sizing: border-box;
-        }
-
-        .room-label {
-            background: rgba(15, 23, 42, 0.85);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: bold;
-            white-space: nowrap;
-        }
-
         .marker {
             position: absolute;
             width: 14px;
@@ -216,7 +194,7 @@
     <h1>Plan Workspace & Room Scanner</h1>
     
     <div class="card" style="background: #f8fafc; padding: 12px; font-size: 0.85rem; color: #64748b;">
-        🔒 <strong>Google Gemini Connection:</strong> Active (Header Secure Protocol Enabled)
+        ⏳ <strong>Google Gemini Connection:</strong> Paused (Awaiting Google Key Infrastructure Fix)
     </div>
 
     <div class="card">
@@ -229,14 +207,9 @@
     </div>
 
     <div class="card">
-        <label>1. Select Calibration Method</label>
-        <div class="btn-group">
-            <button id="scaleBarBtn" class="secondary" onclick="setCalibrationMode('scaleBar')">Use Scale Bar</button>
-            <button id="knownLineBtn" class="secondary" onclick="setCalibrationMode('knownLine')">Use Known Wall Line</button>
-        </div>
-
-        <div id="calibrationInputArea" style="display: none; margin-top: 12px;">
-            <label id="inputLabel" for="scaleInput">Enter Real-World Length:</label>
+        <label>1. Set Scaling Metrics</label>
+        <div id="calibrationInputArea">
+            <label for="scaleInput">Enter Length of Scale Bar:</label>
             <div class="btn-group">
                 <input type="number" id="scaleInput" value="5" style="margin-bottom:0; width: 60%;">
                 <select id="unitInput" style="padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
@@ -244,29 +217,25 @@
                     <option value="mm">Millimeters (mm)</option>
                 </select>
             </div>
-            <button id="activateTapBtn" style="margin-top: 10px; background: #e0f2fe; color: #0369a1;" onclick="startClickSequence()">📍 Tap Line Endpoints on Plan</button>
+            <button id="activateTapBtn" style="margin-top: 10px; background: #e0f2fe; color: #0369a1;" onclick="startClickSequence()">📍 Tap & Align Scale Bar</button>
         </div>
         
         <label style="margin-top:16px;">2. Automation Controls</label>
-        <button id="scanBtn" onclick="runSmartRoomScan()" style="background: var(--success);">🤖 Auto-Detect Rooms (Scan for Beds)</button>
+        <button id="scanBtn" onclick="alert('AI scanning is paused while Google updates their backend server keys. Use the draggable pins above to check manual wall lengths directly inside the status box!')" style="background: #94a3b8; cursor: not-allowed;">🤖 Auto-Detect Rooms (Temporarily Paused)</button>
     </div>
 
     <div class="card" id="canvasCard" style="display: none;">
-        <label>🗺️ Blueprint Workspace Canvas (Tip: Drag pins to readjust)</label>
+        <label>🗺️ Blueprint Workspace Canvas (Tip: Drag pins to measure any line segment live)</label>
         <div class="canvas-container" id="canvasWrapper">
             <img id="blueprintImg" src="" alt="" onclick="handleCanvasClick(event)">
         </div>
     </div>
 
-    <div class="version-footer">VERSION 3.6</div>
+    <div class="version-footer">VERSION 3.7</div>
 </div>
 
 <script>
-// Hardcoded with your updated active AQ credentials
-const EM_KEY = "AQ.Ab8RN6J9RNhQq7v3a9SA87VGZGr7fjn73zyJc7Lx4UgM94IQCQ";
-
 let originalImage = new Image();
-let calibrationMode = null; 
 let isCalibrating = false;
 let calPoints = [];
 let pixelsPerMeter = null; 
@@ -291,41 +260,20 @@ function loadBlueprint(event) {
         imgElement.src = e.target.result;
         canvasCard.style.display = 'block';
         originalImage.src = e.target.result;
-        statusBox.innerText = "Image loaded successfully. Select your preferred scaling calibration method above.";
+        statusBox.innerText = "Image loaded successfully. Tap 'Tap & Align Scale Bar' to set up your target measurements.";
     };
     reader.readAsDataURL(file);
 }
 
 function clearOverlays() {
     document.querySelectorAll('.marker').forEach(m => m.remove());
-    document.querySelectorAll('.room-overlay').forEach(o => o.remove());
     calPoints = [];
 }
 
-function setCalibrationMode(mode) {
-    calibrationMode = mode;
-    document.getElementById('scaleBarBtn').classList.remove('active-mode');
-    document.getElementById('knownLineBtn').classList.remove('active-mode');
-    document.getElementById('calibrationInputArea').style.display = 'block';
-    
-    if (mode === 'scaleBar') {
-        document.getElementById('scaleBarBtn').classList.add('active-mode');
-        document.getElementById('inputLabel').innerText = "Enter full length of Scale Bar:";
-        document.getElementById('scaleInput').value = "5";
-        document.getElementById('unitInput').value = "meters";
-    } else {
-        document.getElementById('knownLineBtn').classList.add('active-mode');
-        document.getElementById('inputLabel').innerText = "Enter dimension length of wall/object:";
-        document.getElementById('scaleInput').value = "2400";
-        document.getElementById('unitInput').value = "mm";
-    }
-}
-
 function startClickSequence() {
-    if (!calibrationMode) return alert("Select calibration mode first!");
     isCalibrating = true;
     clearOverlays();
-    document.getElementById('statusBox').innerText = "📐 Calibration Active: Tap point 1 on the plan canvas, then tap point 2.";
+    document.getElementById('statusBox').innerText = "📐 Calibration Active: Tap point 1 on the scale bar, then tap point 2.";
 }
 
 function handleCanvasClick(e) {
@@ -377,10 +325,7 @@ function createDraggableMarker(x, y, index, wrapper, imgElement) {
             marker.style.top = newY + "px";
 
             calPoints[index] = {x: newX, y: newY};
-            
-            if (calPoints.length === 2 && !isCalibrating) {
-                recalculateScaleRatio();
-            }
+            recalculateScaleRatio();
         }
 
         function onPointerUp(ev) {
@@ -406,129 +351,15 @@ function recalculateScaleRatio() {
         userLength = userLength / 1000;
     }
     
-    pixelsPerMeter = pixelDistance / userLength;
-    document.getElementById('statusBox').innerText = "✨ Scale Locked & Verified! (Feel free to drag markers to tweak scale).";
-}
-
-function runSmartRoomScan() {
-    if (!pixelsPerMeter) return alert("Calibrate plan dimensions first!");
-
-    const statusBox = document.getElementById('statusBox');
-    statusBox.style.color = "var(--primary)";
-    statusBox.innerText = "🧠 Compressing and preparing file payload structure...";
-
-    const maxDimension = 1024; 
-    let width = originalImage.width;
-    let height = originalImage.height;
-
-    if (width > maxDimension || height > maxDimension) {
-        if (width > height) {
-            height *= maxDimension / width;
-            width = maxDimension;
-        } else {
-            width *= maxDimension / height;
-            height = maxDimension;
-        }
+    // First setup sets the pixel tracking baseline
+    if (pixelsPerMeter === null) {
+        pixelsPerMeter = pixelDistance / userLength;
+        document.getElementById('statusBox').innerText = "✨ Baseline Scale Locked! Tip: You can now drag these pins to measure any room wall directly, and the exact real-world distance will print below.";
+    } else {
+        // Subsequent movements print out active live dimensions
+        const liveDistanceMeters = pixelDistance / pixelsPerMeter;
+        document.getElementById('statusBox').innerText = "📏 Active Measurement: " + liveDistanceMeters.toFixed(2) + " meters";
     }
-
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(originalImage, 0, 0, width, height);
-    
-    try {
-        const base64Data = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
-        statusBox.innerText = "🧠 Contacting Google Cloud Server via Secure Request Payload...";
-
-        // ROUTED VIA SECURE CORE CHANNEL URL
-        const url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent";
-
-        const prompt = "Look closely at this architectural plan drawing layout. Identify any rooms that contain a bed drawing symbol (Bedrooms). For every bedroom found, estimate its bounding box coordinates inside the image framework. Return data strictly as a valid JSON array of objects. Do not wrap code blocks in backticks, return raw string text. JSON structure example format: " + 
-        '[{"roomName": "Bedroom 1", "box_2d": [ymin, xmin, ymax, xmax]}] where coordinates are standard normalized integers between 0 and 1000 representing the image boundary grid limits.';
-
-        const payload = {
-            contents: [{
-                parts: [
-                    { text: prompt },
-                    { inlineData: { mimeType: "image/jpeg", data: base64Data } }
-                ]
-            }],
-            generationConfig: { responseMimeType: "application/json" }
-        };
-
-        fetch(url, {
-            method: "POST",
-            headers: { 
-                "Content-Type": "application/json",
-                "x-goog-api-key": EM_KEY // MOVED KEY DIRECTLY INSIDE SECURE REQUEST HEADERS TO SATISFY AQ ACCESS PROTOCOLS
-            },
-            body: JSON.stringify(payload)
-        })
-        .then(res => {
-            if (!res.ok) {
-                return res.text().then(text => { throw new Error(text) });
-            }
-            return res.json();
-        })
-        .then(data => {
-            if (!data.candidates || !data.candidates[0].content.parts[0].text) {
-                throw new Error("Empty response token.");
-            }
-            const jsonText = data.candidates[0].content.parts[0].text;
-            const rooms = JSON.parse(jsonText);
-            plotRooms(rooms);
-        })
-        .catch(err => {
-            statusBox.style.color = "red";
-            statusBox.innerText = "API Error: " + err.message;
-            console.error(err);
-        });
-
-    } catch (e) {
-        statusBox.style.color = "red";
-        statusBox.innerText = "Canvas Extraction Failure: " + e.message;
-    }
-}
-
-function plotRooms(roomsList) {
-    const img = document.getElementById('blueprintImg');
-    const wrapper = document.getElementById('canvasWrapper');
-    const rect = img.getBoundingClientRect();
-    
-    document.querySelectorAll('.room-overlay').forEach(o => o.remove());
-    document.getElementById('statusBox').style.color = "green";
-    document.getElementById('statusBox').innerText = "Successfully mapped " + roomsList.length + " rooms!";
-
-    roomsList.forEach(room => {
-        if (!room.box_2d) return;
-        
-        const ymin = (room.box_2d[0] / 1000) * rect.height;
-        const xmin = (room.box_2d[1] / 1000) * rect.width;
-        const ymax = (room.box_2d[2] / 1000) * rect.height;
-        const xmax = (room.box_2d[3] / 1000) * rect.width;
-
-        const boxWidthPx = xmax - xmin;
-        const boxHeightPx = ymax - ymin;
-
-        const realWidthMeters = boxWidthPx / pixelsPerMeter;
-        const realHeightMeters = boxHeightPx / pixelsPerMeter;
-        const totalSquareMeters = realWidthMeters * realHeightMeters;
-
-        const overlay = document.createElement('div');
-        overlay.className = 'room-overlay';
-        overlay.style.top = ymin + "px";
-        overlay.style.left = xmin + "px";
-        overlay.style.width = boxWidthPx + "px";
-        overlay.style.height = boxHeightPx + "px";
-
-        const label = document.createElement('div');
-        label.className = 'room-label';
-        label.innerText = room.roomName + ": " + totalSquareMeters.toFixed(1) + " m²";
-        
-        overlay.appendChild(label);
-        wrapper.appendChild(overlay);
-    });
 }
 </script>
 </body>
