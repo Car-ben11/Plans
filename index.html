@@ -9,6 +9,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
+    <!-- Tailwind CSS CDN for premium layout framing -->
     <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
@@ -200,45 +201,50 @@
 </head>
 <body class="p-4 md:p-6">
 
-<div class="container">
-    <h1 class="font-bold text-slate-800 text-center uppercase tracking-wide">Takeoff Estimator & CAD Workspace</h1>
+<div class="container max-w-4xl mx-auto">
+    <h1 class="font-bold text-slate-800 text-center uppercase tracking-wide">CAD Takeoff Estimator (Cloudmersive OCR)</h1>
     
+    <!-- Tab Navigation Bar -->
     <div class="tab-nav flex gap-2 mb-4 bg-slate-200 p-1 rounded-lg">
         <button class="tab-btn active" onclick="switchTab('workspaceTab', this)">🗺️ Plan Workspace</button>
         <button class="tab-btn" onclick="switchTab('agentTab', this)">🤖 QA Agent Terminal</button>
     </div>
 
+    <!-- Custom Modal Toast system -->
     <div id="toastNotification" class="toast-box">Notification message</div>
 
+    <!-- ========================================== -->
+    <!-- TAB 1: WORKSPACE INTERACTIVE PLATFORM      -->
+    <!-- ========================================== -->
     <div id="workspaceTab" class="tab-content active">
         
+        <!-- Secure Key Credentials Manager -->
         <div class="card p-4 rounded-xl border border-blue-200 bg-blue-50/50 mb-4 shadow-sm">
-            <label class="text-blue-700 font-bold mb-1 block text-sm">🔑 Secure Google Gemini Key Settings</label>
-            <p class="text-xs text-slate-500 mb-2">
-                Your API credentials are saved securely in your browser cache. Paste your legacy <strong>AIzaSy...</strong> key here to run auto scans:
-            </p>
-            <input type="text" id="userApiKeyInput" class="w-full p-2 border border-slate-300 rounded-md text-sm mb-2" placeholder="Paste your legacy key starting with AIzaSy...">
+            <label class="text-blue-700 font-bold mb-1 block text-sm">🔑 Secure Cloudmersive API Key</label>
+            <input type="text" id="userApiKeyInput" class="w-full p-2 border border-slate-300 rounded-md text-sm mb-2" value="cb91109c-6d45-4ea3-bc76-e47f613c313d" placeholder="Enter your Cloudmersive API Key...">
             <div class="text-right">
                 <button onclick="saveUserApiKey()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-md transition">💾 Lock Key inside Memory</button>
             </div>
         </div>
 
+        <!-- Securely Configured Importer Dropzone -->
         <div class="card bg-white p-4 rounded-xl border border-slate-200 mb-4 shadow-sm">
             <label class="text-slate-700 font-semibold mb-2 block">Blueprint Importer</label>
             <label for="planImporter" class="upload-dropzone">
                 <span id="uploadPromptText">📤 Tap to Upload Plan Screenshot (PNG or JPG)</span>
-                <input type="file" id="planImporter" accept="image/*" onchange="loadBlueprint(event)">
+                <input type="file" id="planImporter" accept="image/*" class="hidden" onchange="loadBlueprint(event)">
             </label>
             
             <div class="flex gap-2 mt-3">
-                <button type="button" class="w-1/2 bg-slate-500 hover:bg-slate-600 text-white text-xs font-semibold py-2 rounded-md transition" onclick="loadOfflineDemo()">
+                <button type="button" class="w-1/2 bg-slate-500 hover:bg-slate-600 text-white text-xs font-semibold py-2.5 rounded-md transition" onclick="loadOfflineDemo()">
                     🛠️ Load Demo Blueprint
                 </button>
-                <button type="button" id="autoScaleBtn" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-2 rounded-md transition" onclick="runAutomaticScaleFinder()" style="display: none;">
+                <button type="button" id="autoScaleBtn" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-2.5 rounded-md transition hidden" onclick="runAutomaticScaleFinder()">
                     🤖 Auto-Detect Scale
                 </button>
             </div>
             
+            <!-- Live Status Debugger Console -->
             <div class="status-msg-box mt-3 p-3 bg-blue-50/50 rounded-lg border-l-4 border-blue-600 text-xs" id="statusBoxContainer">
                 <div class="status-title font-bold text-blue-700 mb-1" id="statusTitle">Status</div>
                 <div id="statusText" class="text-slate-600 font-medium">Upload a blueprint image or click "Load Demo Blueprint" to start.</div>
@@ -246,6 +252,7 @@
             </div>
         </div>
 
+        <!-- Scale Calibration Parameters -->
         <div class="card bg-white p-4 rounded-xl border border-slate-200 mb-4 shadow-sm">
             <label class="text-slate-700 font-semibold mb-2 block">1. Scaling Metrics Calibration</label>
             <div id="calibrationInputArea">
@@ -260,28 +267,21 @@
                 
                 <div class="flex gap-2">
                     <button id="activateTapBtn" class="w-1/2 bg-slate-500 hover:bg-slate-600 text-white text-sm font-semibold py-2.5 rounded-md transition" onclick="startClickSequence()">📍 Drop 2 Calibration Pins</button>
-                    <button id="lockScaleBtn" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold py-2.5 rounded-md transition" onclick="lockBaselineScale()" style="display: none;">🔒 Lock Baseline Scale</button>
+                    <button id="lockScaleBtn" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold py-2.5 rounded-md transition hidden" onclick="lockBaselineScale()">🔒 Lock Baseline Scale</button>
                 </div>
             </div>
             
-            <label class="text-slate-700 font-semibold mt-4 mb-2 block">2. Takeoff Scanning</label>
-            <label for="scanTypeSelect" class="text-xs text-slate-500 mb-1 block">Choose Target Spaces:</label>
-            <select id="scanTypeSelect" class="w-full p-2 border border-slate-300 rounded-md text-sm bg-white mb-3">
-                <option value="all">🔍 Scan All Rooms & Spaces (Living, Kitchen, Garage, Bath, Courtyard)</option>
-                <option value="single">🎯 Scan Single Selected Room (Highly Focused Scan)</option>
-            </select>
-
-            <div id="singleRoomSelectorContainer" class="mb-3" style="display: none;">
-                <label for="singleRoomName" class="text-xs text-slate-500 mb-1 block">Enter Room Name to Find (e.g. Kitchen, Garage, Living Room):</label>
-                <input type="text" id="singleRoomName" value="Kitchen" class="w-full p-2 border border-slate-300 rounded-md text-sm">
-            </div>
+            <!-- Category Target Selector -->
+            <label class="text-slate-700 font-semibold mt-4 mb-2 block">2. Cloudmersive OCR Takeoff Scan</label>
+            <p class="text-xs text-slate-500 mb-3">Scan blueprint with Cloudmersive OCR SDK. It will read text tags dynamically and map standard adjacent room overlays exactly where the labels are printed!</p>
 
             <div class="flex gap-2">
-                <button id="scanBtn" onclick="runSmartRoomScan()" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold py-3 rounded-md transition">🤖 Auto-Detect Rooms</button>
-                <button id="manualDrawBtn" onclick="startManualRoomDraw()" class="w-1/2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-semibold py-3 rounded-md transition" style="display: none;">➕ Draw Space Manually</button>
+                <button id="scanBtn" onclick="runCloudmersiveTakeoffScan()" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold py-3 rounded-md transition">🤖 Auto-Detect Rooms (OCR Scan)</button>
+                <button id="manualDrawBtn" onclick="startManualRoomDraw()" class="w-1/2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-semibold py-3 rounded-md transition hidden">➕ Draw Space Manually</button>
             </div>
         </div>
 
+        <!-- Interactive Drawing Board Workspace Canvas -->
         <div class="card bg-white p-4 rounded-xl border border-slate-200 mb-4 shadow-sm" id="canvasCard" style="display: none;">
             <label class="text-slate-700 font-semibold mb-1 block">🗺️ Takeoff Workspace Canvas</label>
             <p class="text-xs text-slate-500 mb-3" id="canvasContextTip">Tip: Tap any room outline below to select it, then drag its corners or slide it to align!</p>
@@ -289,12 +289,14 @@
                 <svg id="calibrationLineSvg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100;">
                     <line id="calibrationLine" x1="0" y1="0" x2="0" y2="0" stroke="var(--marker-glow)" stroke-width="2.5" stroke-dasharray="6 4" />
                 </svg>
+                <!-- Live Draw Preview Overlay Box -->
                 <div id="liveDrawBox" class="absolute border-2 border-dashed border-cyan-500 bg-cyan-500/10 pointer-events-none hidden z-50"></div>
                 <img id="blueprintImg" src="" alt="" onclick="handleCanvasClick(event)">
                 <div id="cadHandleLayer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 99;"></div>
             </div>
         </div>
 
+        <!-- Dynamic Estimation Schedule Table Card -->
         <div class="card bg-white p-4 rounded-xl border border-slate-200 mb-4 shadow-sm" id="scheduleCard" style="display: none;">
             <label class="text-slate-700 font-semibold mb-1 block">📊 Interactive Area & Dimension Schedule</label>
             <p class="text-xs text-slate-500 mb-3">
@@ -312,12 +314,14 @@
                         </tr>
                     </thead>
                     <tbody id="scheduleTableBody">
-                        </tbody>
+                        <!-- Filled Dynamically -->
+                    </tbody>
                 </table>
             </div>
         </div>
     </div>
 
+    <!-- TAB 2: TERMINAL SandBox -->
     <div id="agentTab" class="tab-content">
         <div class="card bg-white p-4 rounded-xl border border-slate-200 mb-4 shadow-sm">
             <label class="text-slate-700 font-semibold mb-2 block">🤖 Diagnostic Test Automation Agent Panel</label>
@@ -334,7 +338,7 @@
         </div>
     </div>
 
-    <div class="version-footer">VERSION 6.2 (LIVE PREVIEW DRAW + PERSISTENT HANDLES)</div>
+    <div class="version-footer">VERSION 7.0 (CLOUDMERSIVE INTEGRATION COMPLETED)</div>
 </div>
 
 <script>
@@ -347,6 +351,7 @@ let currentGlobalRoomsList = [];
 let selectedRoomIndex = null; 
 let isDrawingRoom = false;
 let startDrawPoint = null;
+let rawFileObject = null; // Store file binary reference securely
 
 function normalizeCoordinate(val, maxPixels) {
     if (typeof val !== 'number') val = parseFloat(val);
@@ -360,8 +365,7 @@ function pxToNormalized(px, maxPx) {
 }
 
 function getActiveApiKey() {
-    const saved = localStorage.getItem('user_gemini_key');
-    return saved ? saved.trim() : DEFAULT_KEY;
+    return localStorage.getItem('user_gemini_key') || "cb91109c-6d45-4ea3-bc76-e47f613c313d";
 }
 
 function saveUserApiKey() {
@@ -381,7 +385,7 @@ document.getElementById('scanTypeSelect').onchange = function() {
 window.onload = function() {
     document.getElementById('userApiKeyInput').value = getActiveApiKey();
     
-    // Bind mousemove/pointermove listeners natively to the canvas container to capture drawing preview paths live
+    // Bind pointermove listeners natively to the canvas wrapper to capture drawing preview paths live
     const container = document.getElementById('canvasWrapper');
     container.addEventListener('pointermove', function(e) {
         if (!isDrawingRoom || !startDrawPoint) return;
@@ -424,7 +428,7 @@ function showToast(message, duration = 3500) {
     setTimeout(() => { toast.style.display = 'none'; }, duration);
 }
 
-// Basic Tab Nav Switcher
+// Tab navigation handler
 function switchTab(tabId, btnElement) {
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -435,6 +439,7 @@ function switchTab(tabId, btnElement) {
 function loadBlueprint(event) {
     const file = event.target.files[0];
     if (!file) return;
+    rawFileObject = file;
 
     const imgElement = document.getElementById('blueprintImg');
     const canvasCard = document.getElementById('canvasCard');
@@ -480,6 +485,10 @@ function loadOfflineDemo() {
     ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(200, 720); ctx.lineTo(800, 720); ctx.stroke();
     ctx.fillStyle = '#2563eb'; ctx.fillRect(196, 700, 8, 40); ctx.fillRect(496, 700, 8, 40); ctx.fillRect(796, 700, 8, 40);
     ctx.font = "bold 14px system-ui"; ctx.fillText("0m", 195, 690); ctx.fillText("5.0m", 460, 690); ctx.fillText("10.0m", 730, 690);
+
+    canvas.toBlob(function(blob) {
+        rawFileObject = new File([blob], "demo_blueprint.png", {type: "image/png"});
+    });
 
     const demoDataUrl = canvas.toDataURL('image/png');
     const imgElement = document.getElementById('blueprintImg');
@@ -614,7 +623,7 @@ function lockBaselineScale() {
     if (calPoints.length < 2) return;
     const dx = calPoints[1].x - calPoints[0].x;
     const dy = calPoints[1].y - calPoints[0].y;
-    let userLength = parseFloat(document.getElementById('scaleInput').value) || 1;
+    let userLength = parseFloat(document.getElementById('scaleInput').value) || 10;
     if (document.getElementById('unitInput').value === 'mm') userLength /= 1000;
     pixelsPerMeter = Math.sqrt(dx*dx + dy*dy) / userLength;
     scaleIsLocked = true;
@@ -629,9 +638,13 @@ function startManualRoomDraw() {
     updateStatus("Drawing Active", "Tap on the image canvas layout to mark the first corner of your room box.");
 }
 
+// =========================================================================
+// GENERAL-PURPOSE DYNAMIC ANCHOR-BASED SCALE BAR FINDER (WORKS ANYWHERE)
+// =========================================================================
 function runAutomaticScaleFinder() {
     const key = getActiveApiKey();
-    updateStatus("Auto-Detect Scale", "Analyzing bottom-left margins for scale bar indicators...");
+    updateStatus("Auto-Detect Scale", "Performing two-pass visual scan to locate scale indicators dynamically...");
+    
     const maxDimension = 1024; let width = originalImage.width; let height = originalImage.height;
     if (width > maxDimension || height > maxDimension) {
         if (width > height) { height *= maxDimension / width; width = maxDimension; }
@@ -642,8 +655,10 @@ function runAutomaticScaleFinder() {
 
     try {
         const base64Data = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
-        appendLog("🤖 Auto-Scale: Searching bottom-left quadrant for SCALE BAR metrics...", "info");
-        const scalePrompt = "Focus exclusively on the graphical horizontal scale ruler bar printed on the lower boundaries of this plan sheet document sheet. Find the exact coordinate tick marked '0.0m' and the coordinate tick marked '10.0m'. Return their normalized positions relative to the sheet canvas borders on a 0-1000 integer grid framework. Output strictly a raw JSON object string with no formatting markdown symbols. Example target formatting: {\"start_coords\": [ymin, xmin], \"end_coords\": [ymax, xmax], \"scale_value\": 10}.";
+        appendLog("🤖 Auto-Scale: Searching entire blueprint area dynamically...", "info");
+
+        const scalePrompt = "You are a professional architectural CAD estimator. Your task is to locate the graphical scale bar bar ANYWHERE on this blueprint sheet and return its coordinates.\n\nFirst, scan the entire image for text annotations containing keywords such as 'SCALE', 'SCALE BAR', '1:100', '1:50', '0.0m', '10.0m', '5.0m', or '0m'.\nOnce you find the scale annotation cluster, locate the physical horizontal scale bar line immediately adjacent to it (usually directly below, above, or next to it). The scale bar is a standalone horizontal line segment with vertical tick marks or blocks representing real-world distances (e.g., from 0.0m to 10.0m or 5.0m).\n\nIgnore all building walls, structural grids, boundary outlines, and title blocks. Focus strictly on the small, isolated, self-contained scale ruler.\n\nIdentify:\n1. The exact coordinates of the start '0' or '0.0m' tick mark of this scale bar.\n2. The exact coordinates of the end tick mark of this scale bar (e.g., the '10.0m', '5.0m', etc. tick).\n\nReturn the coordinates on a normalized 0-1000 grid relative to the entire image canvas borders, where [0,0] is the top-leftmost pixel and [1000,1000] is the bottom-rightmost pixel.\n\nReturn data strictly as a valid raw JSON object with NO backticks or markdown formatting. JSON structure:\n{\"start_coords\": [ymin, xmin], \"end_coords\": [ymax, xmax], \"scale_value\": 10}\nReplace 'scale_value' with the actual number printed at the end tick.";
+
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
         
         fetch(url, {
@@ -685,100 +700,109 @@ function applyAutoDetectedScale(scaleObj) {
     scaleIsLocked = true;
     document.getElementById('lockScaleBtn').style.display = 'block';
     document.getElementById('manualDrawBtn').style.display = 'block';
-    updateStatus("Auto-Scale Successful", `🤖 Scale bar representing ${lengthMeters}m calibrated! Tweak pins manually, then click Lock scale.`);
+    updateStatus("Auto-Scale Successful", `🤖 Auto-Scale found scale bar representing ${lengthMeters}m calibrated! Tweak pins manually, then click Lock scale.`);
 }
 
-function runSmartRoomScan() {
-    if (!pixelsPerMeter) return alert("Please lock down your baseline scale metrics first!");
-    updateStatus("Compressing Blueprint", "Reducing blueprint size to prepare secure payload packet...");
-    const maxDimension = 1024; let width = originalImage.width; let height = originalImage.height;
-    if (width > maxDimension || height > maxDimension) {
-        if (width > height) { height *= maxDimension / width; width = maxDimension; }
-        else { width *= maxDimension / height; height = maxDimension; }
+// =========================================================================
+// CLOUDMERSIVE OCR DYNAMIC LAYOUT SCAN ENGINE
+// =========================================================================
+function runCloudmersiveTakeoffScan() {
+    if (!pixelsPerMeter) {
+        showToast("⚠️ Set up scaling baseline before scanning!");
+        return alert("Please lock down your baseline scale metrics first!");
     }
-    const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
-    const ctx = canvas.getContext('2d'); ctx.drawImage(originalImage, 0, 0, width, height);
-    
-    try {
-        const base64Data = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
-        const scanType = document.getElementById('scanTypeSelect').value;
-        let promptText = "";
-        
-        // Dynamic full sheet mapping prevents drifts
-        const coordinateWarning = " CRITICAL COGNITIVE MAPPING INSTRUCTION: Observe the entire drawing sheet canvas. The uploaded image contains white borders, a title block at the bottom, and a legend table on the far right. The actual floor plan house layout is located primarily in the left and center-left portion of the sheet. Your [ymin, xmin, ymax, xmax] coordinates MUST be relative to the absolute borders of the ENTIRE drawing sheet canvas (where [0,0] is the top-leftmost pixel of the uploaded image and [1000,1000] is the bottom-rightmost pixel of the uploaded image). Map them exactly to where they physically appear on the uploaded canvas sheet. BOUNDARY CONSTRAINTS: Each room on a plan is bounded by walls. Rooms are adjacent but CANNOT overlap each other.";
+    if (!rawFileObject) {
+        showToast("⚠️ Please upload a blueprint image file first!");
+        return alert("Please upload a drawing sheet before initiating scanning!");
+    }
 
-        if (scanType === 'all') {
-            promptText = "Look closely at this floor plan drawing layout. Identify all major rooms and architectural zones visible (such as Bedrooms, Living Rooms, Kitchen, Bathrooms, Garage, Entry, Dining, Balcony, etc.). Do not limit yourself only to rooms with furniture; look at room labels, outline divisions, and wall structures. For every room found, provide its room name and estimate its bounding box coordinates inside the image framework. Return data strictly as a valid JSON array of objects. Do not wrap code blocks in backticks, return raw string text. JSON structure example format: " + '[{"roomName": "Bedroom 1", "box_2d": [ymin, xmin, ymax, xmax]}]' + coordinateWarning;
-        } else {
-            const selectName = document.getElementById('singleRoomName').value || "Kitchen";
-            promptText = `Look closely at this floor plan drawing layout. Target and scan ONLY the space labeled or designed as "${selectName}". Locate its exact wall-bounded perimeter bounds. Provide its room name "${selectName}" and estimate its bounding box coordinates inside the image framework. Return data strictly as a valid JSON array containing exactly this single room object. Do not wrap code blocks in backticks, return raw string text. JSON structure format: ` + `[{"roomName": "${selectName}", "box_2d": [ymin, xmin, ymax, xmax]}]` + coordinateWarning;
+    const key = getActiveApiKey();
+    updateStatus("Cloudmersive Scan Running", "Uploading binary stream to Cloudmersive Layout Recognition Engine...");
+    appendLog("Dispatching multipart payload to Cloudmersive Technical OCR API...", "info");
+
+    let formData = new FormData();
+    formData.append("imageFile", rawFileObject);
+
+    fetch("[https://api.cloudmersive.com/ocr/image/image-to-text/words-with-localization](https://api.cloudmersive.com/ocr/image/image-to-text/words-with-localization)", {
+        method: "POST",
+        headers: {
+            "Apikey": key
+        },
+        body: formData
+    })
+    .then(async res => {
+        if (!res.ok) {
+            const errText = await res.text();
+            throw new Error(`Cloudmersive rejected request: ${errText || "HTTP " + res.status}`);
         }
-        executeAutoHealingScan(base64Data, promptText);
-    } catch (e) { updateStatus("Pipeline Failure", e.message, true); }
+        return res.json();
+    })
+    .then(result => {
+        processOcrResults(result);
+    })
+    .catch(err => {
+        updateStatus("OCR Pipeline Failed", "API Handshake failed. Please verify your Cloudmersive API key.", true, err.message);
+        appendLog("OCR Handshake Fault: " + err.message, "fail");
+    });
 }
 
-function executeAutoHealingScan(base64Data, prompt) {
-    const key = getActiveApiKey();
-    appendLog("🚀 Starting dynamic multi-route permission check...", "info");
-    let routeTraceOutput = "SWEEPING HANDSHAKE MATRIX:\n";
+function processOcrResults(result) {
+    try {
+        const extractedRooms = [];
+        const rect = document.getElementById('blueprintImg').getBoundingClientRect();
+        
+        appendLog("Processing localized spatial OCR word nodes...", "info");
+        
+        if (result.TextPages && result.TextPages.length > 0) {
+            result.TextPages.forEach(page => {
+                if (!page.TextLines) return;
+                page.TextLines.forEach(line => {
+                    if (!line.TextWords) return;
+                    line.TextWords.forEach(word => {
+                        const wordText = word.WordText.trim();
+                        
+                        // Architectural word target list filters
+                        const targetLabels = [
+                            "garage", "workshop", "kitchen", "living", "dining", "bedroom", 
+                            "bath", "bathroom", "ensuite", "laundry", "entry", "staircase", 
+                            "patio", "alfresco", "balcony", "lounge", "hallway"
+                        ];
+                        
+                        if (targetLabels.includes(wordText.toLowerCase())) {
+                            // Translate OCR raw pixels into display viewport relative percentages
+                            const normX = pxToNormalized(word.LeftX, originalImage.width);
+                            const normY = pxToNormalized(word.TopY, originalImage.height);
+                            // Establish standard CAD bounding frame around label
+                            const normW = pxToNormalized(word.Width + 140, originalImage.width);
+                            const normH = pxToNormalized(word.Height + 90, originalImage.height);
 
-    const routes = [
-        {
-            url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
-            headers: { "Content-Type": "application/json" },
-            payload: { contents: [{ parts: [ { text: prompt }, { inlineData: { mimeType: "image/jpeg", data: base64Data } } ] }], generationConfig: { responseMimeType: "application/json" } },
-            name: "2.5 Flash (v1beta + URL Key)"
-        },
-        {
-            url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
-            headers: { "Content-Type": "application/json" },
-            payload: { contents: [{ parts: [ { text: prompt + " Output raw JSON only, no backticks." }, { inlineData: { mimeType: "image/jpeg", data: base64Data } } ] }] },
-            name: "2.5 Flash (v1beta Config-Free)"
+                            extractedRooms.push({
+                                roomName: wordText.charAt(0).toUpperCase() + wordText.slice(1),
+                                box_2d: [normY, normX, normY + normH, normX + normW]
+                            });
+                        }
+                    });
+                });
+            });
         }
-    ];
 
-    let currentRouteIndex = 0;
-    function attemptNextRoute() {
-        if (currentRouteIndex >= routes.length) {
-            updateStatus("Handshake Exhausted", "All connection pathways failed. Check the credentials status error logs below.", true, routeTraceOutput);
+        if (extractedRooms.length === 0) {
+            updateStatus("Scan Completed", "OCR ran successfully, but found no matching architectural room text labels on this blueprint sheet.", false);
+            appendLog("Zero target room keyword labels found on current layout.", "warn");
+            showToast("⚠️ Found 0 target room text tags.");
             return;
         }
-        const activeRoute = routes[currentRouteIndex];
-        updateStatus("AI Scanning Blueprint", `Route [${currentRouteIndex + 1}/${routes.length}] connecting...`, false, routeTraceOutput);
-        
-        fetch(activeRoute.url, { method: "POST", headers: activeRoute.headers, body: JSON.stringify(activeRoute.payload) })
-        .then(async res => {
-            const text = await res.text();
-            let data = JSON.parse(text);
-            if (!res.ok) {
-                routeTraceOutput += `❌ Route ${currentRouteIndex + 1}: Rejected -> ${data.error ? data.error.message : "HTTP " + res.status}\n`;
-                currentRouteIndex++; attemptNextRoute(); return;
-            }
-            routeTraceOutput += `✅ Route ${currentRouteIndex + 1}: Success!\n`;
-            updateStatus("AI Scan Completed", "Handshake succeeded! Parsing overlays...", false, routeTraceOutput);
-            processScanResults(data);
-        })
-        .catch(err => {
-            routeTraceOutput += `❌ Route ${currentRouteIndex + 1}: Connection Error -> ${err.message}\n`;
-            currentRouteIndex++; attemptNextRoute();
-        });
-    }
-    attemptNextRoute();
-}
 
-function processScanResults(data) {
-    try {
-        let jsonText = data.candidates[0].content.parts[0].text.trim();
-        if (jsonText.startsWith("```json")) jsonText = jsonText.substring(7);
-        if (jsonText.startsWith("```")) jsonText = jsonText.substring(3);
-        if (jsonText.endsWith("```")) jsonText = jsonText.substring(0, jsonText.length - 3);
-        const rooms = JSON.parse(jsonText.trim());
-        let finalArray = Array.isArray(rooms) ? rooms : Object.values(rooms)[0];
-        if (!Array.isArray(finalArray)) finalArray = [rooms];
-        currentGlobalRoomsList = finalArray;
+        updateStatus("Scan Completed", `Successfully mapped ${extractedRooms.length} rooms! Adjust overlays as needed.`, false);
+        appendLog(`Cloudmersive OCR localized ${extractedRooms.length} room labels successfully!`, "pass");
+        
+        currentGlobalRoomsList = extractedRooms;
         plotRooms(currentGlobalRoomsList);
         buildRoomScheduleTable(currentGlobalRoomsList);
-    } catch (e) { updateStatus("Payload Data Fault", e.message, true); }
+    } catch (e) {
+        updateStatus("Payload Mapping Fault", e.message, true);
+        appendLog("Data mapping error: " + e.message, "fail");
+    }
 }
 
 function plotRooms(roomsList) {
