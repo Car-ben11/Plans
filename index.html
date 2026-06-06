@@ -3,170 +3,206 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Automated CAD Estimator Suite</title>
+    <title>Autonomous Takeoff Suite</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root {
-            --primary: #2563eb; --success: #10b981; --bg: #f8fafc; --marker-glow: #d946ef; --cad-active: #06b6d4;
-        }
-        body { background-color: var(--bg); user-select: none; }
-        .canvas-container { position: relative; width: 100%; overflow: auto; border: 2px solid #cbd5e1; border-radius: 8px; background: #f1f5f9; max-height: 550px; }
+        :root { --primary: #2563eb; --success: #10b981; --cad: #06b6d4; }
+        .canvas-container { position: relative; width: 100%; overflow: auto; border: 2px solid #cbd5e1; border-radius: 8px; background: #f1f5f9; max-height: 580px; }
         #imageWrapper { position: relative; display: inline-block; width: 100%; }
         #blueprintImg { display: block; width: 100%; height: auto; -webkit-user-drag: none; }
         .room-overlay { position: absolute; border: 2px solid var(--success); background: rgba(16, 185, 129, 0.08); border-radius: 4px; cursor: pointer; box-sizing: border-box; }
-        .room-overlay.selected-active { border: 2.5px solid var(--cad-active) !important; background: rgba(6, 182, 212, 0.15) !important; }
-        .marker { position: absolute; width: 32px; height: 32px; background: rgba(217, 70, 239, 0.35); border: 2.5px solid var(--marker-glow); border-radius: 50%; transform: translate(-50%, -50%); z-index: 110; cursor: move; display: flex; align-items: center; justify-content: center; color: #ffffff; font-weight: bold; }
+        .room-overlay.selected-active { border: 2.5px solid var(--cad) !important; background: rgba(6, 182, 212, 0.15) !important; z-index: 99; }
+        .cad-handle { position: absolute; width: 22px; height: 22px; background: #ffffff; border: 3px solid var(--cad); border-radius: 50%; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.3); cursor: pointer; }
+        .cad-handle.tl { top: -11px; left: -11px; } .cad-handle.tr { top: -11px; right: -11px; } .cad-handle.bl { bottom: -11px; left: -11px; } .cad-handle.br { bottom: -11px; right: -11px; }
     </style>
 </head>
-<body class="p-4 md:p-6">
+<body class="p-4 bg-slate-50">
 <div class="max-w-4xl mx-auto bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-    <h1 class="font-bold text-slate-800 text-center uppercase tracking-wide mb-4">Production Automated Takeoff Space</h1>
+    <h2 class="text-xl font-bold text-slate-800 text-center tracking-wide mb-4">PRODUCTION AUTONOMOUS TAKEOFF HOUSING</h2>
 
     <div class="mb-4">
-        <label class="block border-2 border-dashed border-blue-400 bg-blue-50/50 p-5 text-center rounded-lg cursor-pointer font-semibold text-blue-700">
-            <span id="promptText">📤 Select Blueprint Screenshot File</span>
-            <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleIncomingFile(event)">
+        <label class="block border-2 border-dashed border-blue-400 bg-blue-50/50 p-6 text-center rounded-lg cursor-pointer font-bold text-blue-700 text-sm">
+            <span id="promptText">📤 Tap to Upload Plan Screenshot</span>
+            <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="processFileSelection(event)">
         </label>
     </div>
 
-    <div class="grid grid-cols-2 gap-3 mb-4">
-        <button onclick="startCalibration()" class="bg-slate-700 text-white font-semibold py-2.5 rounded-md text-sm">📍 Place Ticks 0 & 1</button>
-        <button id="lockBtn" onclick="lockScale()" class="bg-emerald-600 text-white font-semibold py-2.5 rounded-md text-sm hidden">🔒 Lock Manual Calibration</button>
+    <button onclick="runAutonomousTakeoffSuite()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-lg text-sm shadow tracking-wide mb-4 transition">
+        🤖 One-Click Auto-Detect Scale & Rooms
+    </button>
+
+    <div id="statusBox" class="p-3 bg-slate-900 text-cyan-400 border-l-4 border-cyan-400 text-xs font-mono mb-4 rounded-r-md">System armed. Awaiting drawing submission...</div>
+
+    <div class="canvas-container hidden mb-4" id="canvasCard">
+        <div id="imageWrapper">
+            <img id="blueprintImg" src="" onclick="clearSelection()">
+            <div id="cadHandleLayer" class="absolute top-0 left-0 w-full h-full pointer-events-none"></div>
+        </div>
     </div>
 
-    <button onclick="triggerAutomatedScan()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg text-sm shadow mb-4">🤖 Run Automated Room Takeoff</button>
-
-    <div id="statusBox" class="p-3 bg-slate-50 border-l-4 border-blue-600 text-xs font-mono mb-4 rounded-r-md">Awaiting drawing sheet submission...</div>
-
-    <div class="canvas-container hidden mb-4" id="canvasView">
-        <div id="imageWrapper">
-            <svg id="svgLine" class="absolute top-0 left-0 w-full h-full pointer-events-none z-100 hidden"><line id="line" x1="0" y1="0" x2="0" y2="0" stroke="var(--marker-glow)" stroke-width="2.5" stroke-dasharray="6 4" /></svg>
-            <img id="blueprintImg" src="" onclick="registerCanvasClick(event)">
-            <div id="handleLayer" class="absolute top-0 left-0 w-full h-full pointer-events-none z-99"></div>
-        </div>
+    <div id="scheduleCard" class="hidden border border-slate-200 rounded-lg overflow-hidden">
+        <table class="w-full text-left border-collapse text-sm">
+            <thead>
+                <tr class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+                    <th class="p-2.5 pl-4">ID</th>
+                    <th class="p-2.5">Room Name</th>
+                    <th class="p-2.5">Real-World Size</th>
+                    <th class="p-2.5 text-right pr-4">Calculated Area</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody" class="divide-y divide-slate-100 font-medium"></tbody>
+        </table>
     </div>
 </div>
 
 <script>
-let fileBinary = null, calPoints = [], pixelsPerMeter = null, scaleLocked = false, isCalibrating = false;
-let imgNaturalWidth = 1, imgNaturalHeight = 1;
+let fileBinary = null, globalRooms = [], selectedIndex = null, serverScaleRatio = null;
 
-function handleIncomingFile(e) {
+function processFileSelection(e) {
     const file = e.target.files[0]; if(!file) return;
     fileBinary = file;
     document.getElementById('promptText').innerText = "📄 " + file.name;
     const reader = new FileReader();
-    reader.onload = function(event) {
-        const img = document.getElementById('blueprintImg');
-        img.src = event.target.result;
-        img.onload = function() {
-            imgNaturalWidth = img.naturalWidth; imgNaturalHeight = img.naturalHeight;
-            document.getElementById('canvasView').classList.remove('hidden');
-            document.getElementById('statusBox').innerText = "File loaded. Place calibration markers 0 and 1 over scale ticks.";
-        };
+    reader.onload = function(ev) {
+        document.getElementById('blueprintImg').src = ev.target.result;
+        document.getElementById('canvasCard').classList.remove('hidden');
+        document.getElementById('statusBox').innerText = "Blueprint visual parameters mapped. Tap button to run full automation workflow.";
     };
     reader.readAsDataURL(file);
 }
 
-function startCalibration() {
-    isCalibrating = true; scaleLocked = false; calPoints = [];
-    document.querySelectorAll('.marker').forEach(m => m.remove());
-    document.querySelectorAll('.room-overlay').forEach(o => o.remove());
-    document.getElementById('svgLine').classList.add('hidden');
-    document.getElementById('statusBox').innerText = "Tap on scale ruler start line to place marker '0'.";
-}
-
-function registerCanvasClick(e) {
-    if (!isCalibrating) return;
-    const rect = document.getElementById('blueprintImg').getBoundingClientRect();
-    const x = e.clientX - rect.left, y = e.clientY - rect.top;
-    const idx = calPoints.length; calPoints.push({x, y});
-
-    const m = document.createElement('div'); m.className = 'marker';
-    m.style.left = x + "px"; m.style.top = y + "px"; m.innerText = idx;
-    document.getElementById('imageWrapper').appendChild(m);
-
-    if (calPoints.length === 1) {
-        document.getElementById('statusBox').innerText = "Marker 0 set. Now tap the 10.0m mark to place marker '1'.";
-    } else if (calPoints.length === 2) {
-        isCalibrating = false;
-        document.getElementById('lockBtn').classList.remove('hidden');
-        document.getElementById('statusBox').innerText = "Markers set! Refine alignment by dragging, then tap Lock Calibration.";
-        drawSvgLine();
-    }
-}
-
-function drawSvgLine() {
-    const l = document.getElementById('line');
-    l.setAttribute('x1', calPoints[0].x); l.setAttribute('y1', calPoints[0].y);
-    l.setAttribute('x2', calPoints[1].x); l.setAttribute('y2', calPoints[1].y);
-    document.getElementById('svgLine').classList.remove('hidden');
-}
-
-function lockScale() {
-    const dx = calPoints[1].x - calPoints[0].x, dy = calPoints[1].y - calPoints[0].y;
-    pixelsPerMeter = Math.abs(Math.sqrt(dx*dx + dy*dy)) / 10;
-    scaleLocked = true;
-    document.getElementById('statusBox').innerText = `Scale calibrated: ${pixelsPerMeter.toFixed(1)} px/m. Initializing automatic takeoff scan loops...`;
-}
-
-// SECURE SERVER-ROUTED PIPELINE HANDSHAKE
-async function triggerAutomatedScan() {
-    if (!scaleLocked || !fileBinary) return alert("Please calibrate scale metrics and verify plan image file input fields!");
-    document.getElementById('statusBox').innerText = "Connecting to backend microservice route... Running text-layout localization...";
+async function runAutonomousTakeoffSuite() {
+    if(!fileBinary) return alert("Please select your plan image file first!");
+    const log = document.getElementById('statusBox');
+    log.innerText = "🚀 Server connection locked! Extracting vector layouts... Mapping architectural text anchors...";
 
     let payload = new FormData();
     payload.append("imageFile", fileBinary);
 
     try {
-        // Direct local routing path avoids browser firewalls completely
         let res = await fetch("/api/takeoff", { method: "POST", body: payload });
-        if (!res.ok) throw new Error("Backend infrastructure rejected authentication authorization keys.");
+        if(!res.ok) throw new Error("Server engine connection fault");
         let data = await res.json();
+
+        serverScaleRatio = data.scalePxPerMeter;
+        globalRooms = data.rooms;
+        log.innerText = `✅ Automation Complete! Scale calculated at ${serverScaleRatio.toFixed(1)} px/m. Plotted ${globalRooms.length} core spaces onto plan coordinates automatically.`;
         
-        document.getElementById('statusBox').innerText = "OCR data packet parsed securely! Scaling overlays proportionally...";
-        renderPrecisionBoxes(data);
-    } catch (err) {
-        document.getElementById('statusBox').innerText = "Server connection lost. Executing localized high-precision backup engine fallback maps...";
-        executeLocalBackupEngine();
+        renderOverlays();
+        renderTable();
+    } catch(err) {
+        log.innerText = "❌ Security Handshake Timeout: Check your server connections log.";
     }
 }
 
-function executeLocalBackupEngine() {
-    const aspect = imgNaturalWidth / imgNaturalHeight;
-    const structuredMock = [
-        { name: "Garage", bounds: [305, 115, 595, 305] },
-        { name: "Storage/Workshop", bounds: [165, 290, 310, 420] },
-        { name: "Living Suite", bounds: [240, 380, 580, 620] },
-        { name: "Kitchen Area", bounds: [350, 260, 570, 370] },
-        { name: "Outdoor Patio", bounds: [220, 620, 560, 720] }
-    ];
-    
+function renderOverlays() {
     document.querySelectorAll('.room-overlay').forEach(o => o.remove());
-    const rect = document.getElementById('blueprintImg').getBoundingClientRect();
+    const img = document.getElementById('blueprintImg');
+    const displayWidth = img.clientWidth;
+    const naturalWidth = img.naturalWidth;
+    const scaleFactor = displayWidth / naturalWidth;
 
-    structuredMock.forEach((room, idx) => {
-        const overlay = document.createElement('div');
-        overlay.className = 'room-overlay';
+    globalRooms.forEach((room, idx) => {
+        const div = document.createElement('div');
+        div.className = 'room-overlay'; div.id = `room-${idx}`;
         
-        // Exact mathematical structural layout scaling locks boxes flush with walls
-        let y1 = (room.bounds[0] / 1000) * 1000 / aspect;
-        let x1 = room.bounds[1];
-        let y2 = (room.bounds[2] / 1000) * 1000 / aspect;
-        let x2 = room.bounds[3];
+        // Calculate display pixels using strict layout conversion metrics
+        let top = room.pixelBounds[0] * scaleFactor;
+        let left = room.pixelBounds[1] * scaleFactor;
+        let w = (room.pixelBounds[3] - room.pixelBounds[1]) * scaleFactor;
+        let h = (room.pixelBounds[2] - room.pixelBounds[0]) * scaleFactor;
 
-        let top = (y1 / 1000) * rect.height;
-        let left = (x1 / 1000) * rect.width;
-        let w = ((x2 - x1) / 1000) * rect.width;
-        let h = ((y2 - y1) / 1000) * rect.height;
-
-        overlay.style.top = top + "px"; overlay.style.left = left + "px";
-        overlay.style.width = w + "px"; overlay.style.height = h + "px";
+        div.style.top = top + "px"; div.style.left = left + "px";
+        div.style.width = w + "px"; div.style.height = h + "px";
+        div.innerHTML = `<div class="bg-slate-900 text-white font-bold text-[9px] px-1 py-0.5 rounded m-1 opacity-90">${idx + 1}. ${room.roomName}</div>`;
         
-        overlay.innerHTML = `<div class="bg-slate-900 text-white font-bold text-[10px] px-1 rounded-sm m-1">${room.name}</div>`;
-        document.getElementById('imageWrapper').appendChild(overlay);
+        div.onclick = (e) => { e.stopPropagation(); activateCADSelection(idx); };
+        document.getElementById('imageWrapper').appendChild(div);
     });
-    document.getElementById('statusBox').innerText = "Takeoff complete! 5 core spaces mapped successfully matching original CAD lines.";
+}
+
+function activateCADSelection(idx) {
+    clearSelection(); selectedIndex = idx;
+    const overlay = document.getElementById(`room-${idx}`);
+    overlay.classList.add('selected-active');
+    const layer = document.getElementById('cadHandleLayer');
+
+    ['tl', 'tr', 'bl', 'br'].forEach(type => {
+        const h = document.createElement('div'); h.className = `cad-handle ${type}`;
+        positionHandle(h, type, overlay); layer.appendChild(h);
+        bindHandleDrag(h, type, overlay, idx);
+    });
+}
+
+function positionHandle(h, type, overlay) {
+    let t = parseFloat(overlay.style.top), l = parseFloat(overlay.style.left);
+    let w = parseFloat(overlay.style.width), height = parseFloat(overlay.style.height);
+    if(type === 'tl') { h.style.top = (t-11)+"px"; h.style.left = (l-11)+"px"; }
+    if(type === 'tr') { h.style.top = (t-11)+"px"; h.style.left = (l+w-11)+"px"; }
+    if(type === 'bl') { h.style.top = (t+height-11)+"px"; h.style.left = (l-11)+"px"; }
+    if(type === 'br') { h.style.top = (t+height-11)+"px"; h.style.left = (l+w-11)+"px"; }
+}
+
+function bindHandleDrag(h, type, overlay, idx) {
+    h.addEventListener('pointerdown', function(e) {
+        e.stopPropagation(); e.preventDefault(); h.setPointerCapture(e.pointerId);
+        let sx = e.clientX, sy = e.clientY;
+        let st = parseFloat(overlay.style.top), sl = parseFloat(overlay.style.left);
+        let sw = parseFloat(overlay.style.width), sh = parseFloat(overlay.style.height);
+
+        function move(ev) {
+            let dx = ev.clientX - sx, dy = ev.clientY - sy;
+            let t = st, l = sl, w = sw, height = sh;
+            if(type === 'tl') { t += dy; l += dx; w -= dx; height -= dy; }
+            if(type === 'tr') { t += dy; w += dx; height -= dy; }
+            if(type === 'bl') { l += dx; w -= dx; height += dy; }
+            if(type === 'br') { w += dx; height += dy; }
+
+            if(w > 15 && height > 15) {
+                overlay.style.top = t + "px"; overlay.style.left = l + "px";
+                overlay.style.width = w + "px"; overlay.style.height = height + "px";
+                document.querySelectorAll('.cad-handle').forEach(hd => positionHandle(hd, hd.classList[1], overlay));
+                updateRowMetrics(idx, w, height);
+            }
+        }
+        function up(ev) { h.releasePointerCapture(ev.pointerId); h.removeEventListener('pointermove', move); }
+        h.addEventListener('pointermove', move); h.addEventListener('pointerup', up);
+    });
+}
+
+function updateRowMetrics(idx, wPx, hPx) {
+    const row = document.getElementById(`row-${idx}`); if(!row) return;
+    const img = document.getElementById('blueprintImg');
+    const scaleFactor = img.clientWidth / img.naturalWidth;
+    
+    let wM = (wPx / scaleFactor) / serverScaleRatio;
+    let hM = (hPx / scaleFactor) / serverScaleRatio;
+
+    row.cells[2].innerText = `${wM.toFixed(1)}m × ${hM.toFixed(1)}m`;
+    row.cells[3].innerText = `${(wM * hM).toFixed(1)} m²`;
+}
+
+function renderTable() {
+    const tbody = document.getElementById('tableBody'); tbody.innerHTML = '';
+    document.getElementById('scheduleCard').classList.remove('hidden');
+
+    globalRooms.forEach((room, idx) => {
+        const row = document.createElement('tr'); row.id = `row-${idx}`;
+        row.className = "border-b border-slate-100 hover:bg-slate-50 cursor-pointer";
+        row.onclick = () => activateCADSelection(idx);
+        row.innerHTML = `
+            <td class="p-2.5 pl-4 text-blue-600 font-bold">#${idx + 1}</td>
+            <td class="p-2.5">${room.roomName}</td>
+            <td class="p-2.5 font-mono text-slate-500">${room.dimensions}</td>
+            <td class="p-2.5 text-right pr-4 font-bold font-mono">${room.area} m²</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function clearSelection() {
+    selectedIndex = null; document.getElementById('cadHandleLayer').innerHTML = '';
+    document.querySelectorAll('.room-overlay').forEach(o => o.classList.remove('selected-active'));
 }
 </script>
 </body>
